@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sekai CTF 2022 : Symbolic Needs 1 &amp; 2</title>
+  <meta name="description" content="Writeup for Sekai CTF 2022 Symbolic Needs 1 &amp; 2">
+  <link rel="canonical" href="https://stdor7314.github.io/2022/10/03/SekaiCTF2022-Symbolic-Needs-1-2.html">
+  <link rel="alternate" type="application/rss+xml" title="Stdor Feed"
+    href="https://stdor7314.github.io/feed.xml">
+  
+  <link rel="shortcut icon" href="/images/favicon.png" type="image/png" />
+  
+  <!-- Styles -->
+  <!--<link href="https://fonts.googleapis.com/css?family=Lato:400,400i,700,700i%7CNoto+Serif:400,400i,700,700i&display=swap" rel="stylesheet">-->
+  <link href="/assets/css/style.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.css" integrity="sha384-t5CR+zwDAROtph0PXGte6ia8heboACF9R5l/DiY+WZ3P2lxNgvJkQk5n7GPvLMYw" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.js" integrity="sha384-FaFLTlohFghEIZkw6VGwmf9ISTubWAVYW8tG8+w2LAIftJEULZABrF9PPFv+tVkH" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/contrib/auto-render.min.js" integrity="sha384-bHBqxz8fokvgoJ/sc17HODNxa42TlaEhB+w8ZJXTc2nZf1VgEaFZeZvT4Mznfz0v" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, { 'delimiters': [
+  {left: '$$', right: '$$', display: true},
+  {left: '$', right: '$', display: false},
+  {left: '\\(', right: '\\)', display: false},
+  {left: '\\begin{equation}', right: '\\end{equation}', display: true},
+  {left: '\\begin{align}', right: '\\end{align}', display: true},
+  {left: '\\begin{alignat}', right: '\\end{alignat}', display: true},
+  {left: '\\begin{gather}', right: '\\end{gather}', display: true},
+  {left: '\\begin{CD}', right: '\\end{CD}', display: true},
+  {left: '\\[', right: '\\]', display: true}
+] });"></script>
+
+</head>
+<body>
+  <div id="bg" style="opacity: 0.15"></div>
+  <!-- background by SVGBackgrounds.com  -->
+  
+  <div id="page" class="site">
+    
+    <div id="toc">
+        <ul><li>Sekai CTF 2022 : Symbolic Needs 1 & 2<ul><li><a title="Symbolic Needs 1" href="#symbolic-needs-1">Symbolic Needs 1</a><ul><li><a title="Description" href="#description">Description</a></li><li><a title="Writeup" href="#writeup">Writeup</a></li></ul></li><li><a title="Symbolic Needs 2" href="#symbolic-needs-2">Symbolic Needs 2</a><ul><li><a title="Description" href="#description-1">Description</a></li><li><a title="Writeup" href="#writeup-1">Writeup</a></li></ul></li></ul></li></ul>
+
+        
+        <p class="post-tags">
+            <a href="/tags.html#ctf" rel="tag">
+                ctf
+            </a>
+                &nbsp;
+            <a href="/tags.html#ctf-writeups" rel="tag">
+                ctf-writeups
+            </a>
+                &nbsp;
+            <a href="/tags.html#ctf-forensics" rel="tag">
+                ctf-forensics
+            </a>
+                &nbsp;
+            <a href="/tags.html#memory-forensics" rel="tag">
+                memory-forensics
+            </a>
+                &nbsp;
+            <a href="/tags.html#volatility" rel="tag">
+                volatility
+            </a>
+                
+            
+        </p>
+        
+        <hr class="no-margin">
+        <a href="#"><b>↑ Top</b></a> <br>
+        <a href="/"><b>↩ Go Back</b></a>
+    </div>
+    <script>
+        offsets = [];
+        Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).slice(2, 1000).forEach(e => {
+          offsets.push([e.offsetTop, e.id])
+        })
+
+        document.addEventListener("scroll", () => {
+            let foundIdx = offsets.findIndex(([k, v]) => k - 10 >= window.pageYOffset);
+            if( foundIdx - 1 == -2 ){
+                foundIdx = offsets.length;
+            }
+            foundIdx = Math.max(0, foundIdx - 1);
+
+            Array.from(document.querySelectorAll('div#toc li > a')).forEach(e => {
+                e.style.color = document.body.style.color;
+                e.style.opacity = 0.7;
+            });
+
+            const to_highlight = document.querySelector(`div#toc li > a[href="#${offsets[foundIdx][1]}"]`);
+            to_highlight.style.color = '#ffffff';
+            to_highlight.style.opacity = 1;
+        })
+    </script>
+    
+    <div class="inner">
+      <header class="site-header">
+  <!-- Avatar from github -->
+  <a class="logo-text" href="/">
+    <img src="/images/avatar.jpg" style="width: 48px; border-radius: 50%; border: 1px solid white; margin-left: 7px; margin-right: 15px; padding: 0.5px">
+  </a>
+  
+  <p class="site-title"><a class="logo-text" href="/">Stdor</a></p>
+  
+  <nav class="site-navigation">
+    <div class="site-navigation-wrap">
+      <h2 class="screen-reader-text">Main navigation</h2>
+      <ul class="menu">
+        
+          
+          
+          <li class="menu-item ">
+            <a class="" href="/tags.html">~/Tags</a>
+          </li>
+        
+          
+          
+          <li class="menu-item ">
+            <a class="" href="/archive.html">~/Archive</a>
+          </li>
+        
+        <li class="menu-item ">
+          
+            
+          
+            
+          
+            
+            <a href="/feed.xml" target="_blank" rel="noopener">
+              <span class="fa-rss" aria-hidden="true"></span>
+              <span class="screen-reader-text">RSS</span>
+              Feed
+            </a>
+            
+          
+        </li>
+      </ul><!-- .menu -->
+      <button id="menu-close" class="menu-toggle"><span class="screen-reader-text">Close Menu</span><span
+          class="icon-close" aria-hidden="true"></span></button>
+    </div><!-- .site-navigation-wrap -->
+  </nav><!-- .site-navigation -->
+  <button id="menu-open" class="menu-toggle"><span class="screen-reader-text">Open Menu</span><span class="icon-menu" aria-hidden="true"></span></button>
+</header>
+
+
+
+      <main class="main-content fadeInDown delay_075s">
+
+  <article class="post">
+    <header class="post-header">
+      <time class="post-date" datetime="2022-10-03">October 3, 2022</time>
+      <span class="post-read-time"> • 7 min read</span>
+      <h1 class="post-title">Sekai CTF 2022 : Symbolic Needs 1 & 2</h1>
+      <div class="post-meta">
+        <span class="post-tags"><a href="/tags.html#ctf" rel="tag">ctf</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#ctf-writeups" rel="tag">ctf-writeups</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#ctf-forensics" rel="tag">ctf-forensics</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#memory-forensics" rel="tag">memory-forensics</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#volatility" rel="tag">volatility</a></span>
+      </div><!-- .post-meta -->
+      
+      <figure class="post-thumbnail image-card width-wide">
+        <img src="/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/description.png" alt="Sekai CTF 2022 : Symbolic Needs 1 & 2">
+      </figure><!-- .post-thumbnail -->
+      
+    </header><!-- .post-header -->
+    <div class="post-content">
+      <p>A linux memory forensics challenge in two parts.</p>
+
+<!--more-->
+
+<h2 id="symbolic-needs-1">Symbolic Needs 1</h2>
+
+<h3 id="description">Description</h3>
+
+<p><img src="/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/symbolic-needs-1.png" alt="symbolic-needs-1.png" /></p>
+
+<blockquote>
+  <p>We recently got hold of a cryptocurrency scammer and confiscated his laptop.</p>
+
+  <p>Analyze the memdump. Submit the string you find wrapped with SEKAI{}.</p>
+
+  <p>Attachment md5sum: 4be69c88e6f19dd9c9f8e6c52bc93c28</p>
+
+  <p>Author: BattleMonger</p>
+
+  <p>https://storage.googleapis.com/sekaictf/Forensics/memdump.zip</p>
+</blockquote>
+
+<ul>
+  <li>Points: 467</li>
+  <li>Solves: 24</li>
+</ul>
+
+<p><a href="https://drive.google.com/file/d/1l4PHepz1TbogHpAOxH356HxzlxTNuGqp/edit">File Mirror</a></p>
+
+<h3 id="writeup">Writeup</h3>
+
+<p>Judging from the magic numbers, the provided file is a linux memory dump. We’ll use <a href="https://github.com/volatilityfoundation/volatility3">volatility3</a> for analysis (for some reasons vol2 doesn’t support this particular OS / kernel). Before we can get volatility to work, we need to build a profile for the memory dump using some kernel debugging info. We can run this command:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python3 volatility3/vol.py <span class="nt">-s</span> ./profile/ <span class="nt">-f</span> dump.mem banner                           
+Volatility 3 Framework 2.4.0
+Progress:  100.00               PDB scanning finished                      
+Offset  Banner
+
+0x42400200      Linux version 5.15.0-43-generic <span class="o">(</span>buildd@lcy02-amd64-076<span class="o">)</span> <span class="o">(</span>gcc <span class="o">(</span>Ubuntu 11.2.0-19ubuntu1<span class="o">)</span> 11.2.0, GNU ld <span class="o">(</span>GNU Binutils <span class="k">for </span>Ubuntu<span class="o">)</span> 2.38<span class="o">)</span> <span class="c">#46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 (Ubuntu 5.15.0-43.46-generic 5.15.39)</span>
+0x437c3718      Linux version 5.15.0-43-generic <span class="o">(</span>buildd@lcy02-amd64-076<span class="o">)</span> <span class="o">(</span>gcc <span class="o">(</span>Ubuntu 11.2.0-19ubuntu1<span class="o">)</span> 11.2.0, GNU ld <span class="o">(</span>GNU Binutils <span class="k">for </span>Ubuntu<span class="o">)</span> 2.38<span class="o">)</span> <span class="c">#46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 (Ubuntu 5.15.0-43.46-generic 5.15.39)9)</span>
+</code></pre></div></div>
+
+<p>Great, so our memory dump is from Ubuntu, with kernel version <code class="language-plaintext highlighter-rouge">5.15.0-43-generic</code>. Let’s grab our debugging kernel at <a href="http://ddebs.ubuntu.com/pool/main/l/linux/linux-image-unsigned-5.15.0-43-generic-dbgsym_5.15.0-43.46_amd64.ddeb">http://ddebs.ubuntu.com/pool/main/l/linux/linux-image-unsigned-5.15.0-43-generic-dbgsym_5.15.0-43.46_amd64.ddeb</a>, unzip it and run <code class="language-plaintext highlighter-rouge">dwarf2json</code> to create our profile:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">mkdir </span>profile
+<span class="nv">$ </span>dwarf2json linux <span class="nt">--elf</span> usr/lib/debug/boot/vmlinux-5.15.0-43-generic <span class="o">&gt;</span> ./profile/vmlinux-5.15.0-43-generic.json
+</code></pre></div></div>
+
+<p>With our profile working let’s try some plugins:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python3 volatility3/vol.py <span class="nt">-s</span> ./profile/ <span class="nt">-f</span> dump.mem linux.bash.Bash
+Volatility 3 Framework 2.4.0
+
+PID Process Command Time Command
+
+1863	bash	2022-08-29 13:45:56.000000 	72.48.117.53.84.48.110.95.119.51.95.52.114.51.95.49.110.33.33.33
+</code></pre></div></div>
+
+<p>Looks like ASCII codes. Decode it and we have the flag!</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;</span> <span class="nb">String</span><span class="p">.</span><span class="nx">fromCharCode</span><span class="p">(</span><span class="mi">72</span><span class="p">,</span><span class="mi">48</span><span class="p">,</span><span class="mi">117</span><span class="p">,</span><span class="mi">53</span><span class="p">,</span><span class="mi">84</span><span class="p">,</span><span class="mi">48</span><span class="p">,</span><span class="mi">110</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">119</span><span class="p">,</span><span class="mi">51</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">52</span><span class="p">,</span><span class="mi">114</span><span class="p">,</span><span class="mi">51</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">49</span><span class="p">,</span><span class="mi">110</span><span class="p">,</span><span class="mi">33</span><span class="p">,</span><span class="mi">33</span><span class="p">,</span><span class="mi">33</span><span class="p">)</span>
+<span class="dl">'</span><span class="s1">H0u5T0n_w3_4r3_1n!!!</span><span class="dl">'</span>
+</code></pre></div></div>
+
+<p>flag: <code class="language-plaintext highlighter-rouge">SEKAICTF{H0u5T0n_w3_4r3_1n!!!}</code></p>
+
+<hr />
+
+<h2 id="symbolic-needs-2">Symbolic Needs 2</h2>
+
+<h3 id="description-1">Description</h3>
+
+<p><img src="/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/symbolic-needs-2.png" alt="symbolic-needs-2.png" /></p>
+
+<blockquote>
+  <p>Recover the private key of the wallet address <code class="language-plaintext highlighter-rouge">0xACa5872e497F0Cc626d1E9bA28bAEC149315266e</code>. Submit the key wrapped with <code class="language-plaintext highlighter-rouge">SEKAI{}</code>.</p>
+
+  <p>Attachment md5sum: <code class="language-plaintext highlighter-rouge">4be69c88e6f19dd9c9f8e6c52bc93c28</code></p>
+
+  <p>Author: BattleMonger</p>
+
+  <p>Hint: Stick to what you used for Part 1, you all are also missing a very basic but extremely useful command.</p>
+</blockquote>
+
+<ul>
+  <li>Points: 482</li>
+  <li>Solves: 18</li>
+</ul>
+
+<h3 id="writeup-1">Writeup</h3>
+
+<p>We decided to run all plugins to see what’s left. My teammate found something interesting in <code class="language-plaintext highlighter-rouge">linux.psaux.PsAux</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python3 volatility3/vol.py <span class="nt">-s</span> ./profile/ <span class="nt">-f</span> dump.mem linux.psaux.PsAux
+...
+1863	1845	bash	bash
+1878	1863	ncat	ncat <span class="nt">-lvnp</span> 1234 <span class="nt">-c</span> <span class="nb">echo </span><span class="nv">N4GQ2CQAAAAAAEFG5JRPEAIAADRQAAAAAAAAAAAAAAAAAAAAAAAAACIAAAAEAAAAABZ6QAAAABSAAZABNQAFUAD2A5SQA2QBMQBBSAC2AJLQA3QLAEAACAABABSQGZADQMAQCADFASBQAAIALEAGOAC2AVSQMZAEMQCYGAUPBZNAOZIHUAEKCAFABGQQAWQFK4AGIAIEAACABAYDAEAG4CBRABZS65YBAEAACAABABMQAAIAMQDFUCTFBNSQVAYBMQDWIAMFAIMQAWQKMUGGKCVABVSQ4ZIKQMAWICDFBZSQVAYBMQEBMAAYAALQBIIBQMAVUCTHABNA6ZIQMQAGKDTFBKBQCZAIQMBUIAC5CRNBCZIPUAJGKBLFCNSQUZIRMUIWICAXACCQEGIAMQDYGATEAIMAAGIAUEAQCADRLFSQGZAJQMAQCADEAFJQAKIK5EAAAAAAJ3UQCAAAAB5BQVLTMFTWKORAFYXXOYLMNRSXIIDQMFZXG53POJSHUDLCNFYDGOLMNFZXILTUPB2NUALSNQKAAAAAABS6KHWNHGMBH4AWTJ3BE3XKCYFWPVQQSR6WWFSHC2WEUE3P5AP7G46OA3IBWAIA5EBAAAAA5EGAAAAA3ICVO4TPNZTSSFG2ANZXS462ARQXEZ3W3IEHAYLTON3W64TE3ICXA4TJNZ2NUBDFPBUXJWQFO5XXEZDT3ICG64DFN3NACZW2ARZGKYLE3IFHG4DMNF2GY2LOMVZ5UBDDN5SGLWQDMJUW5WQDON2HFWQFPJTGS3DM3IBWYZLO3IEG23TFNVXW42LD3ICXEYLOM5S5UALJ3IDGC4DQMVXGJWQDNFXHJKIAOINQAAAAOINQAAAA7IEHIZLTOQZC44DZ3IEDY3LPMR2WYZJ6AEAAAADTEIAAAAAIAABAEDQBAYAQQAIIAECAGDACBYARZ7YEAMIAGIQBAQBRIARGAEGAE</span><span class="o">===</span> | <span class="nb">base32</span> <span class="nt">-d</span> <span class="o">&gt;</span> file.pyc
+1886	1147	update-notifier	update-notifier
+1911	1863	<span class="nb">sudo	sudo </span>insmod LiME/src/lime-5.15.0-43-generic.ko <span class="nv">path</span><span class="o">=</span>dump.mem <span class="nv">format</span><span class="o">=</span>lime
+...
+</code></pre></div></div>
+
+<p>That’s a python bytecode file and we can decompile it. Let’s try <a href="https://github.com/zrax/pycdc">pycdc</a>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>cmake <span class="nb">.</span> <span class="o">&amp;&amp;</span> make <span class="nt">-j</span> 30 <span class="c"># build pycdc</span>
+
+<span class="nv">$ </span>./pycdc ./file.pyc
+<span class="c"># Source Generated with Decompyle++</span>
+<span class="c"># File: file.pyc (Python 3.10)</span>
+
+Unsupported opcode: WITH_EXCEPT_START
+import sys
+<span class="c"># WARNING: Decompyle incomplete</span>
+</code></pre></div></div>
+
+<p>It failed. Python 3.10 is rather new and pycdc isn’t ready for it yet. So we did it in a hacky way: modify the source code in <code class="language-plaintext highlighter-rouge">ASTree.cpp</code> and force it to continue, instead of throwing errors:</p>
+
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/* ASTree.cpp */</span>
+<span class="cm">/* Remove the return statements in default and insert a break ;) */</span>
+<span class="p">...</span>
+<span class="k">case</span> <span class="n">Pyc</span><span class="o">::</span><span class="n">SETUP_ANNOTATIONS</span><span class="p">:</span>
+    <span class="n">variable_annotations</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+	<span class="k">break</span><span class="p">;</span>
+<span class="k">default</span><span class="o">:</span>
+	<span class="k">break</span><span class="p">;</span>
+    <span class="c1">// fprintf(stderr, "Unsupported opcode: %s\n", Pyc::OpcodeName(opcode &amp; 0xFF));</span>
+    <span class="c1">// cleanBuild = false;</span>
+    <span class="c1">// return new ASTNodeList(defblock-&gt;nodes());</span>
+<span class="p">...</span>
+</code></pre></div></div>
+
+<p>With <code class="language-plaintext highlighter-rouge">./pycdc ./file.pyc &gt; test2.py</code>, that’ll give us much more decompiled code. Not perfect, but almost!</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Source Generated with Decompyle++
+# File: file.pyc (Python 3.10)
+</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">password</span> <span class="o">=</span> <span class="n">sys</span><span class="p">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="k">pass</span>
+<span class="k">print</span><span class="p">(</span><span class="s">'Usage: ./wallet password'</span><span class="p">)</span>
+<span class="nb">exit</span><span class="p">()</span>
+<span class="n">words</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">'bip39list.txt'</span><span class="p">,</span> <span class="s">'r'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="n">read</span><span class="p">().</span><span class="n">splitlines</span><span class="p">()</span>
+    <span class="bp">None</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="n">code</span> <span class="o">=</span> <span class="mh">0x26F4036773F33FD1BC4E55616472CD7F65086B670B2DD5B84BB4D16F02730E734F72E500</span><span class="n">L</span>
+<span class="n">code</span> <span class="o">=</span> <span class="nb">bin</span><span class="p">(</span><span class="n">code</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]</span>
+<span class="n">code</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">code</span><span class="p">.</span><span class="n">zfill</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">12</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="o">%</span> <span class="mi">12</span><span class="p">)))</span>
+<span class="n">mnemonic</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">),</span> <span class="mi">12</span><span class="p">):</span>
+    <span class="n">mnemonic</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">code</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">12</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+<span class="k">print</span><span class="p">(</span><span class="s">'Wrong'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The program seems to be generating a passphrase from a code. If you look up <code class="language-plaintext highlighter-rouge">bip39</code>, you’ll realize it’s a way to use a passphrase to store wallet address and private keys. Since we don’t have access to the wordlist <code class="language-plaintext highlighter-rouge">bip39list.txt</code> in the dump, we’ll assume the <a href="https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt">standard one</a> is used. Let’s clean up the code and generate the passphrase:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">words</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">'bip39list.txt'</span><span class="p">,</span> <span class="s">'r'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="n">read</span><span class="p">().</span><span class="n">splitlines</span><span class="p">()</span>
+
+<span class="n">code</span> <span class="o">=</span> <span class="mh">0x26F4036773F33FD1BC4E55616472CD7F65086B670B2DD5B84BB4D16F02730E734F72E500</span>
+<span class="n">code</span> <span class="o">=</span> <span class="nb">bin</span><span class="p">(</span><span class="n">code</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]</span>
+<span class="n">code</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">code</span><span class="p">.</span><span class="n">zfill</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">12</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="o">%</span> <span class="mi">12</span><span class="p">)))</span>
+<span class="n">mnemonic</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">code</span><span class="p">),</span> <span class="mi">12</span><span class="p">):</span>
+    <span class="n">mnemonic</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">code</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">12</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s">' '</span><span class="p">.</span><span class="n">join</span><span class="p">(</span><span class="n">mnemonic</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>python3 test2.py
+evidence leopard solution layer legend danger orient project silver flower wrong path stove throw fortune report nuclear old target exact broom hawk toss paper
+</code></pre></div></div>
+
+<p>We’ve got the mnemonics! Let’s head to <a href="https://iancoleman.io/bip39/">https://iancoleman.io/bip39/</a>:</p>
+
+<p><img src="/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/bip39-conf.png" alt="bip39-conf.png" /></p>
+
+<p>The first derived address (<code class="language-plaintext highlighter-rouge">0xACa5872e497F0Cc626d1E9bA28bAEC149315266e</code>) matches the description. We need the private key:</p>
+
+<p><img src="/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/bip39-key.png" alt="bip39-key.png" /></p>
+
+<p>flag: <code class="language-plaintext highlighter-rouge">SEKAICTF{0x81c458e9fae445de18385a3379513acc8e191e4c2667c85aa0a52a32ec4e6d55}</code></p>
+
+
+    </div><!-- .post-content -->
+    <div class="post-share">
+      <span>Share on:</span>
+      <a target="_blank"
+        href="https://twitter.com/intent/tweet?text=Sekai%20CTF%202022%20:%20Symbolic%20Needs%201%20&%202&amp;url=https://stdor7314.github.io/2022/10/03/SekaiCTF2022-Symbolic-Needs-1-2.html" rel="noopener">
+        <span class="fa-twitter" aria-hidden="true"></span> Twitter
+      </a>
+    </div><!-- .share-post -->
+  </article><!-- .post -->
+
+  
+
+</main><!-- .main-content -->
+
+      <footer class="site-footer">
+  <div class="offsite-links">
+    
+      
+<a href="https://github.com/stdor7314" target="_blank" rel="noopener">
+  <span class="fa-github" aria-hidden="true"></span>
+  <span class="screen-reader-text">GitHub</span>
+</a>
+
+<a href="https://twitter.com/stdor_" target="_blank" rel="noopener">
+  <span class="fa-twitter" aria-hidden="true"></span>
+  <span class="screen-reader-text">Twitter</span>
+</a>
+
+<a href="/feed.xml" target="_blank" rel="noopener">
+  <span class="fa-rss" aria-hidden="true"></span>
+  <span class="screen-reader-text">RSS</span>
+</a>
+
+    
+  </div><!-- .offsite-links -->
+  <div class="footer-bottom">
+    <div class="site-info">
+      <p>© Stdor 2023. Theme adapted from <a href="https://justgoodthemes.com/ghost-themes/scriptor">Scriptor</a>.</p>
+
+    </div><!-- .site-info -->
+    <a href="#page" id="back-to-top" class="back-to-top"><span class="screen-reader-text">Back to the top </span>&#8593;</a>
+  </div><!-- .footer-bottom -->
+</footer><!-- .site-footer -->
+
+    </div><!-- .inner -->
+  </div><!-- .site -->
+
+  <!-- Scripts -->
+  
+  <script src="/assets/js/plugins.js"></script>
+  <script src="/assets/js/custom.js"></script>
+  <script>
+	// Add anchors on DOMContentLoaded
+	document.addEventListener('DOMContentLoaded', function(event) {
+	  anchors.add('h1:not(.post-title), h2:not(.post-title), h3, h4, h5, h6');
+	  anchors.remove('.site-title');
+	});
+	
+	// Adjust background opacity
+	var f = function(){
+		bg.style.opacity = Math.random()*0.1 + 0.05;
+	};
+	f();
+	setInterval(f, 5000);
+  </script>
+
+</body>
+</html>

