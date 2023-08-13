@@ -58,13 +58,14 @@
         <a href="/"><b>↩ Go Back</b></a>
     </div>
     <script>
+      function scrollspy(){
         offsets = [];
         Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).slice(2, 1000).forEach(e => {
           offsets.push([e.offsetTop, e.id])
         })
 
         document.addEventListener("scroll", () => {
-            let foundIdx = offsets.findIndex(([k, v]) => k - 10 >= window.pageYOffset);
+            let foundIdx = offsets.findIndex(([k, v]) => k - 15 >= window.pageYOffset);
             if( foundIdx - 1 == -2 ){
                 foundIdx = offsets.length;
             }
@@ -79,6 +80,9 @@
             to_highlight.style.color = '#ffffff';
             to_highlight.style.opacity = 1;
         })
+      }
+
+      document.addEventListener("DOMContentLoaded", scrollspy);
     </script>
     
     <div class="inner">
@@ -98,13 +102,13 @@
           
           
           <li class="menu-item ">
-            <a class="" href="/tags.html">~/Tags</a>
+            <a class="" href="/tags.html">🏷️ Tags</a>
           </li>
         
           
           
           <li class="menu-item ">
-            <a class="" href="/archive.html">~/Archive</a>
+            <a class="" href="/archive.html">🗃️ Archive</a>
           </li>
         
         <li class="menu-item ">
@@ -115,7 +119,7 @@
           
             
             <a href="/feed.xml" target="_blank" rel="noopener">
-              <span class="fa-rss" aria-hidden="true"></span>
+              <span class="fa-rss header-rss-icon" aria-hidden="true"></span>
               <span class="screen-reader-text">RSS</span>
               Feed
             </a>
@@ -140,7 +144,7 @@
       <span class="post-read-time"> • 8 min read</span>
       <h1 class="post-title">The logic behind matrix diagonalization with eigenvectors</h1>
       <div class="post-meta">
-        <span class="post-tags"><a href="/tags.html#maths" rel="tag">maths</a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#linear-algebra" rel="tag">linear-algebra</a></span>
+        <span class="post-tags"><a href="/tags.html#maths" rel="tag"><nobr>maths</nobr></a>&nbsp;&nbsp;&nbsp;<a href="/tags.html#linear-algebra" rel="tag"><nobr>linear-algebra</nobr></a></span>
       </div><!-- .post-meta -->
       
     </header><!-- .post-header -->
